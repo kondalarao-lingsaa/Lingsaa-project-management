@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+
+/* Standalone only: the root app defines these theme variables via its settings/theme system. */
+:root {
+  --theme-solid: #2563eb;
+  --theme-grad-start: #2563eb;
+  --theme-grad-end: #1d4ed8;
+}
