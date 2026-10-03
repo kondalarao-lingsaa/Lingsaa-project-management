@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import { RoadmapView } from 'src/pms/planning/PlanningViews'
 
-const PlanningRoadmapPage = () => <PmsPage screenId='planning.roadmap' />
+const PlanningRoadmapPage = () => <RoadmapView />
 
 export default PlanningRoadmapPage

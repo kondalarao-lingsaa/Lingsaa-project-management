@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import TasksListView from 'src/pms/tasks/TasksListView'
 
-const TasksAllTasksPage = () => <PmsPage screenId='tasks.allTasks' />
+const TasksAllTasksPage = () => <TasksListView screenId='tasks.allTasks' scope='all' subtitle='Every task across your projects' />
 
 export default TasksAllTasksPage

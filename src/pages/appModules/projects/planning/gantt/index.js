@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import { GanttView } from 'src/pms/planning/PlanningViews'
 
-const PlanningGanttPage = () => <PmsPage screenId='planning.gantt' />
+const PlanningGanttPage = () => <GanttView />
 
 export default PlanningGanttPage

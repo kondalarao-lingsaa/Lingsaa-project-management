@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import ProjectSettingsView from 'src/pms/projects/ProjectSettingsView'
 
-const ProjectsProjectSettingsPage = () => <PmsPage screenId='projects.projectSettings' />
+const ProjectsProjectSettingsPage = () => <ProjectSettingsView />
 
 export default ProjectsProjectSettingsPage

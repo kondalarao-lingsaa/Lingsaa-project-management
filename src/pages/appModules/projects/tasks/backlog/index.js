@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import { BacklogView } from 'src/pms/sprints/SprintViews'
 
-const TasksBacklogPage = () => <PmsPage screenId='tasks.backlog' />
+const TasksBacklogPage = () => <BacklogView />
 
 export default TasksBacklogPage

@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import { CapacityView } from 'src/pms/team/WorkloadViews'
 
-const ResourcesCapacityPage = () => <PmsPage screenId='resources.capacity' />
+const ResourcesCapacityPage = () => <CapacityView />
 
 export default ResourcesCapacityPage

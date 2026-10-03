@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import TaskCalendar from 'src/pms/calendar/TaskCalendar'
 
-const TasksCalendarPage = () => <PmsPage screenId='tasks.calendar' />
+const TasksCalendarPage = () => <TaskCalendar />
 
 export default TasksCalendarPage

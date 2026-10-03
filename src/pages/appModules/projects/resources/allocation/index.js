@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import ResourcesView from 'src/pms/team/ResourcesView'
 
-const ResourcesAllocationPage = () => <PmsPage screenId='resources.allocation' />
+const ResourcesAllocationPage = () => <ResourcesView mode='allocation' />
 
 export default ResourcesAllocationPage

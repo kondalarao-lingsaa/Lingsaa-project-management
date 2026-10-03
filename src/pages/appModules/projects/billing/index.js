@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import BillingView from 'src/pms/billing/BillingView'
 
-const BillingPage = () => <PmsPage screenId='billing' />
+const BillingPage = () => <BillingView />
 
 export default BillingPage

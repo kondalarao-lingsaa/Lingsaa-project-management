@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import { MentionsView } from 'src/pms/communication/CommunicationViews'
 
-const CommunicationMentionsPage = () => <PmsPage screenId='communication.mentions' />
+const CommunicationMentionsPage = () => <MentionsView />
 
 export default CommunicationMentionsPage

@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import SettingsView from 'src/pms/settings/SettingsView'
 
-const SettingsPage = () => <PmsPage screenId='settings' />
+const SettingsPage = () => <SettingsView />
 
 export default SettingsPage

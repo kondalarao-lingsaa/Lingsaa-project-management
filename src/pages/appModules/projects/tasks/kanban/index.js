@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import KanbanBoard from 'src/pms/tasks/KanbanBoard'
 
-const TasksKanbanPage = () => <PmsPage screenId='tasks.kanban' />
+const TasksKanbanPage = () => <KanbanBoard />
 
 export default TasksKanbanPage

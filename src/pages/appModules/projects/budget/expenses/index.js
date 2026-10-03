@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import { ExpensesView } from 'src/pms/budget/CostViews'
 
-const BudgetExpensesPage = () => <PmsPage screenId='budget.expenses' />
+const BudgetExpensesPage = () => <ExpensesView />
 
 export default BudgetExpensesPage

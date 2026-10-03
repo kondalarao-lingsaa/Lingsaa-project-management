@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import { VarianceView } from 'src/pms/budget/CostViews'
 
-const BudgetVariancePage = () => <PmsPage screenId='budget.variance' />
+const BudgetVariancePage = () => <VarianceView />
 
 export default BudgetVariancePage

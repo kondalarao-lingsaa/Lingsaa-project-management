@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import ReportsView from 'src/pms/reports/ReportsView'
 
-const ReportsPage = () => <PmsPage screenId='reports' />
+const ReportsPage = () => <ReportsView />
 
 export default ReportsPage

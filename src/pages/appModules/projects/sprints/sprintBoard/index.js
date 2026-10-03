@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import { SprintBoardView } from 'src/pms/sprints/SprintViews'
 
-const SprintsSprintBoardPage = () => <PmsPage screenId='sprints.sprintBoard' />
+const SprintsSprintBoardPage = () => <SprintBoardView />
 
 export default SprintsSprintBoardPage

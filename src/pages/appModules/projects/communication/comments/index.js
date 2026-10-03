@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import { CommentsView } from 'src/pms/communication/CommunicationViews'
 
-const CommunicationCommentsPage = () => <PmsPage screenId='communication.comments' />
+const CommunicationCommentsPage = () => <CommentsView />
 
 export default CommunicationCommentsPage

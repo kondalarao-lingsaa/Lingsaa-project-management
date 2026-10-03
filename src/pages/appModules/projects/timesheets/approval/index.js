@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import ApprovalView from 'src/pms/timesheets/ApprovalView'
 
-const TimesheetsApprovalPage = () => <PmsPage screenId='timesheets.approval' />
+const TimesheetsApprovalPage = () => <ApprovalView />
 
 export default TimesheetsApprovalPage

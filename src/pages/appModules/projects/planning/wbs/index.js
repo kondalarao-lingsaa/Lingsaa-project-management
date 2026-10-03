@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import { WbsView } from 'src/pms/planning/PlanningViews'
 
-const PlanningWbsPage = () => <PmsPage screenId='planning.wbs' />
+const PlanningWbsPage = () => <WbsView />
 
 export default PlanningWbsPage

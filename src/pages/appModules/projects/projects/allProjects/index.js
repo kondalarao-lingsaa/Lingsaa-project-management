@@ -1,5 +1,7 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import ProjectsListView from 'src/pms/projects/ProjectsListView'
 
-const ProjectsAllProjectsPage = () => <PmsPage screenId='projects.allProjects' />
+const ProjectsAllProjectsPage = () => (
+  <ProjectsListView screenId='projects.allProjects' scope='all' subtitle='Plan, track and manage every project in your company' />
+)
 
 export default ProjectsAllProjectsPage

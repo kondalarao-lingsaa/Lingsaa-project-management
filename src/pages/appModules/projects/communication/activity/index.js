@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import { ActivityView } from 'src/pms/communication/CommunicationViews'
 
-const CommunicationActivityPage = () => <PmsPage screenId='communication.activity' />
+const CommunicationActivityPage = () => <ActivityView />
 
 export default CommunicationActivityPage

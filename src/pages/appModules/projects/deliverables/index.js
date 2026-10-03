@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import MilestonesOverviewView from 'src/pms/milestones/MilestonesOverviewView'
 
-const DeliverablesPage = () => <PmsPage screenId='deliverables' />
+const DeliverablesPage = () => <MilestonesOverviewView screenId='deliverables' />
 
 export default DeliverablesPage

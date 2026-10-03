@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import { DependenciesView } from 'src/pms/planning/PlanningViews'
 
-const PlanningDependenciesPage = () => <PmsPage screenId='planning.dependencies' />
+const PlanningDependenciesPage = () => <DependenciesView />
 
 export default PlanningDependenciesPage

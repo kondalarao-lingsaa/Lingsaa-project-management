@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import { ActualCostView } from 'src/pms/budget/CostViews'
 
-const BudgetActualCostPage = () => <PmsPage screenId='budget.actualCost' />
+const BudgetActualCostPage = () => <ActualCostView />
 
 export default BudgetActualCostPage

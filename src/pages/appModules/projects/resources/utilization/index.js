@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import { UtilizationView } from 'src/pms/team/WorkloadViews'
 
-const ResourcesUtilizationPage = () => <PmsPage screenId='resources.utilization' />
+const ResourcesUtilizationPage = () => <UtilizationView />
 
 export default ResourcesUtilizationPage

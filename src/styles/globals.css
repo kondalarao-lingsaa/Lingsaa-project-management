@@ -1,8 +1,416 @@
 @import 'tailwindcss';
 
-/* Standalone only: the root app defines these theme variables via its settings/theme system. */
+/* Standalone only: the root app defines these theme variables via its settings/theme system.
+   Values are Lingsaa_Accounts' defaults (src/configs/themeConfig.js: gradient #4f46e5 -> #9333ea). */
 :root {
-  --theme-solid: #2563eb;
-  --theme-grad-start: #2563eb;
-  --theme-grad-end: #1d4ed8;
+  --theme-solid: #4f46e5;
+  --theme-grad-start: #4f46e5;
+  --theme-grad-end: #9333ea;
+}
+
+/* ---- List screen styles copied from Lingsaa_Accounts (styles/globals.css) so PMS lists look the same ---- */
+.search-input {
+  border-radius: 20px !important;
+}
+
+.filterCustBtn {
+  background-color: #f8f7fa !important;
+  color: #4b5563 !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.5rem !important;
+  padding: 4px 22px !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  text-transform: none !important;
+  transition: all 0.3s !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 34px !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+}
+
+.filterCustBtn:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.filterCustBtn.active {
+  background-color: color-mix(in srgb, var(--theme-solid) 12%, transparent) !important;
+  border-color: var(--theme-solid) !important;
+  color: color-mix(in srgb, var(--theme-solid) 80%, black) !important;
+  font-weight: 600 !important;
+}
+
+.filter-cust-icon {
+  color: #111827 !important;
+  width: 16px !important;
+  height: 20px !important;
+}
+
+.filterCustBtn.active .filter-cust-icon {
+  color: color-mix(in srgb, var(--theme-solid) 80%, black) !important;
+}
+
+.filterCustBtn .MuiButton-startIcon {
+  margin-right: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* ---- Form inputs and dropdowns: same classes ThemeStyles switches to (copied from Lingsaa_Accounts) ---- */
+.light-theme-input-field,
+.light-theme-dropdown {
+  color: #566573;
+  background-color: #ffffff;
+}
+
+.light-theme-input-field:disabled,
+.light-theme-input-field[readonly],
+.light-theme-dropdown:disabled,
+.light-theme-dropdown[readonly] {
+  background-color: #e9ecef !important;
+  color: #6b7280 !important;
+  cursor: not-allowed !important;
+}
+
+.dark-theme-input-field,
+.dark-theme-dropdown {
+  color: #b3b6b7 !important;
+  background-color: #2f334a !important;
+  border-color: #4b5563 !important;
+}
+
+.dark-theme-input-field::placeholder,
+.dark-theme-dropdown::placeholder {
+  color: #8a8d93;
+}
+
+.dark-theme-input-field:disabled,
+.dark-theme-input-field[readonly] {
+  opacity: 1 !important;
+  -webkit-text-fill-color: #b3b6b7 !important;
+}
+
+select.light-theme-dropdown,
+select.dark-theme-dropdown {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23b3b6b7' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.75rem center !important;
+  background-size: 16px 12px !important;
+}
+
+.dark-mode input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}
+
+.modal-bg-dark-theme {
+  background-color: #2f334a;
+}
+
+/* ---- Sidebar scrollbar: thin perfect-scrollbar like Lingsaa_Accounts (4px, 6px on hover) ---- */
+.ps__rail-y {
+  z-index: 1;
+  right: 0 !important;
+  left: auto !important;
+}
+
+.ps__rail-y .ps__thumb-y {
+  right: 3px !important;
+  left: auto !important;
+  background-color: rgba(93, 89, 108, 0.2) !important;
+}
+
+.layout-vertical-nav .ps__rail-y .ps__thumb-y {
+  width: 4px;
+}
+
+.layout-vertical-nav .ps__rail-y:hover,
+.layout-vertical-nav .ps__rail-y:focus,
+.layout-vertical-nav .ps__rail-y.ps--clicking {
+  background-color: transparent !important;
+}
+
+.layout-vertical-nav .ps__rail-y:hover .ps__thumb-y,
+.layout-vertical-nav .ps__rail-y.ps--clicking .ps__thumb-y {
+  width: 6px;
+}
+
+.dark-mode .ps__rail-y .ps__thumb-y {
+  background-color: rgba(207, 211, 236, 0.3) !important;
+}
+
+/* Thin scrollbars everywhere else too (tables, drawers), instead of the thick browser default. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(93, 89, 108, 0.25) transparent;
+}
+
+.dark-mode * {
+  scrollbar-color: rgba(207, 211, 236, 0.25) transparent;
+}
+
+.pms-nav-row {
+  color: #000000;
+}
+
+.pms-nav-child {
+  color: #334155;
+}
+
+/* ---- Dark mode ----
+   Colours match the root app's dark palette (#25293C page, #2F3349 cards, #2F334A inputs).
+   These rules are unlayered, so they win over Tailwind's utility layer without extra specificity games. */
+.dark-mode {
+  background-color: #25293c;
+  color: #cfd3ec;
+}
+
+.dark-mode .pms-layout,
+.dark-mode .bg-gray-50,
+.dark-mode .from-gray-50,
+.dark-mode .to-gray-50 {
+  background-color: #25293c;
+  --tw-gradient-from: #25293c;
+  --tw-gradient-to: #25293c;
+}
+
+.dark-mode .bg-white,
+.dark-mode .via-white,
+.dark-mode .pms-sidebar {
+  background-color: #2f3349;
+  --tw-gradient-via: #2f3349;
+}
+
+.dark-mode .bg-white\/90 {
+  background-color: rgba(47, 51, 73, 0.9);
+}
+
+.dark-mode .bg-gray-100,
+.dark-mode .bg-slate-100,
+.dark-mode .bg-slate-50,
+.dark-mode .pms-drawer-body {
+  background-color: #25293c;
+}
+
+.dark-mode .bg-gray-200,
+.dark-mode .bg-gray-300 {
+  background-color: #434968;
+}
+
+.dark-mode .hover\:bg-gray-100:hover,
+.dark-mode .hover\:bg-gray-50:hover,
+.dark-mode .hover\:bg-gray-50\/70:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.dark-mode .border-gray-100,
+.dark-mode .border-gray-200,
+.dark-mode .border-gray-300,
+.dark-mode .border-slate-200,
+.dark-mode .border-slate-300 {
+  border-color: #434968;
+}
+
+.dark-mode .text-gray-900,
+.dark-mode .text-slate-900,
+.dark-mode .text-slate-800,
+.dark-mode .text-gray-700,
+.dark-mode .text-slate-700,
+.dark-mode .hover\:text-slate-900:hover,
+.dark-mode .pms-nav-row {
+  color: #cfd3ec;
+}
+
+.dark-mode .text-gray-600,
+.dark-mode .text-slate-600,
+.dark-mode .text-gray-500,
+.dark-mode .text-slate-500,
+.dark-mode .pms-nav-child {
+  color: #9a9eb6;
+}
+
+.dark-mode .text-gray-400,
+.dark-mode .text-slate-400 {
+  color: #7b7f95;
+}
+
+.dark-mode .bg-\[color-mix\(in_srgb\,var\(--theme-solid\)_5\%\,white\)\] {
+  background-color: color-mix(in srgb, var(--theme-solid) 10%, #2f3349);
+}
+
+/* Soft status/priority chips: translucent fill and lighter text so they stay readable on dark cards. */
+.dark-mode .bg-emerald-100,
+.dark-mode .bg-green-100 { background-color: rgba(52, 211, 153, 0.16); }
+.dark-mode .bg-red-100 { background-color: rgba(248, 113, 113, 0.16); }
+.dark-mode .bg-amber-100 { background-color: rgba(251, 191, 36, 0.16); }
+.dark-mode .bg-orange-100 { background-color: rgba(251, 146, 60, 0.16); }
+.dark-mode .bg-blue-100 { background-color: rgba(96, 165, 250, 0.16); }
+.dark-mode .bg-violet-100 { background-color: rgba(167, 139, 250, 0.16); }
+.dark-mode .text-emerald-700,
+.dark-mode .text-green-600 { color: #34d399; }
+.dark-mode .text-red-700,
+.dark-mode .text-red-600 { color: #f87171; }
+.dark-mode .text-amber-700,
+.dark-mode .text-amber-600 { color: #fbbf24; }
+.dark-mode .text-orange-700,
+.dark-mode .text-orange-600 { color: #fb923c; }
+.dark-mode .text-blue-700,
+.dark-mode .text-blue-600 { color: #60a5fa; }
+.dark-mode .text-violet-700,
+.dark-mode .text-violet-600 { color: #a78bfa; }
+
+/* Tables */
+.dark-mode table th {
+  color: #cfd3ec;
+}
+
+.dark-mode tbody tr {
+  border-color: #434968;
+}
+
+/* List toolbar (same dark rules as Lingsaa_Accounts) */
+.dark-mode .search-input {
+  background-color: #2f334a !important;
+  color: #eeebeb !important;
+}
+
+.dark-mode .search-input::placeholder {
+  color: #8a8d93 !important;
+}
+
+.dark-mode .filterCustBtn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #d1d5db !important;
+  border-color: #4b5563 !important;
+}
+
+.dark-mode .filterCustBtn:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.dark-mode .filterCustBtn.active {
+  background-color: color-mix(in srgb, var(--theme-solid) 25%, transparent) !important;
+  border-color: color-mix(in srgb, var(--theme-solid) 80%, white) !important;
+  color: color-mix(in srgb, var(--theme-solid) 70%, white) !important;
+}
+
+.dark-mode .filter-cust-icon,
+.dark-mode .filterCustBtn.active .filter-cust-icon {
+  color: #d1d5db !important;
+}
+
+/* Recharts text on dark cards */
+.dark-mode .recharts-cartesian-axis-tick-value,
+.dark-mode .recharts-legend-item-text {
+  fill: #9a9eb6;
+  color: #9a9eb6 !important;
+}
+
+.dark-mode .recharts-cartesian-grid line {
+  stroke: #434968;
+}
+
+.dark-mode .recharts-default-tooltip {
+  background-color: #2f3349 !important;
+  border-color: #434968 !important;
+}
+
+/* ---- Pinned Actions column: solid backgrounds that match the header row and the table card ---- */
+.pms-sticky-head {
+  background-color: #f9fafb;
+  box-shadow: -8px 0 8px -8px rgba(0, 0, 0, 0.18);
+}
+
+.pms-sticky-cell {
+  background-color: #ffffff;
+  box-shadow: -8px 0 8px -8px rgba(0, 0, 0, 0.18);
+}
+
+tr:hover > .pms-sticky-cell {
+  background-color: #fcfcfd;
+}
+
+/* Dark: header = slate-900/60 over the card, body = the card colour (bg-indigo-900/10 over #25293C). */
+.dark-mode .pms-sticky-head {
+  background-color: #181e32;
+  box-shadow: -8px 0 8px -8px rgba(0, 0, 0, 0.6);
+}
+
+.dark-mode .pms-sticky-cell {
+  background-color: #26293f;
+  box-shadow: -8px 0 8px -8px rgba(0, 0, 0, 0.6);
+}
+
+.dark-mode tr:hover > .pms-sticky-cell {
+  background-color: #2e3146;
+}
+
+/* ---- List fonts: same as Lingsaa_Accounts table Typography (UserThemeOptions h1 = table heads, h2 = table data) ---- */
+.pms-th-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f1042;
+}
+
+.pms-td-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #000000;
+}
+
+.dark-mode .pms-th-text {
+  color: #f8fafc;
+}
+
+.dark-mode .pms-td-text {
+  color: #dfdbda;
+}
+
+/* ---- Base form controls: copied from Lingsaa_Accounts styles/globals.css ----
+   `outline: <color>` without a style removes the browser's thick black focus outline (e.g. on the
+   Per Page box); the field's own border/ring shows focus instead. */
+input:focus,
+textarea:focus,
+select:focus {
+  color: rgb(95, 93, 93);
+  outline: rgb(95, 93, 93);
+}
+
+input {
+  color: rgb(99, 97, 97) !important;
+  border-color: rgb(205, 206, 206) !important;
+  border-radius: 0.4rem !important;
+}
+
+/* ---- Printing an invoice: only the invoice "paper" is printed ---- */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .invoice-paper,
+  .invoice-paper *,
+  .report-print,
+  .report-print * {
+    visibility: visible;
+  }
+
+  .report-print {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+
+  .invoice-paper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
 }

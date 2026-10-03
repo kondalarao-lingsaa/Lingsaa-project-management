@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import ResourcesView from 'src/pms/team/ResourcesView'
 
-const ResourcesTeamPage = () => <PmsPage screenId='resources.team' />
+const ResourcesTeamPage = () => <ResourcesView mode='team' />
 
 export default ResourcesTeamPage

@@ -1,5 +1,5 @@
-import PmsPage from 'src/pms/components/PmsPage'
+import TeamTimesheetsView from 'src/pms/timesheets/TeamTimesheetsView'
 
-const TimesheetsTeamTimesheetsPage = () => <PmsPage screenId='timesheets.teamTimesheets' />
+const TimesheetsTeamTimesheetsPage = () => <TeamTimesheetsView />
 
 export default TimesheetsTeamTimesheetsPage
