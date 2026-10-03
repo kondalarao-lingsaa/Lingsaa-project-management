@@ -34,6 +34,16 @@ export const accessApi = pmsApi.injectEndpoints({
       invalidatesTags: ['Users', 'Me']
     }),
 
+    // Settings > Users & Access > Permission Matrix
+    getPermissions: builder.query({
+      query: () => url('/settings/permissions'),
+      providesTags: ['Permissions']
+    }),
+    savePermissions: builder.mutation({
+      query: body => ({ url: url('/settings/permissions'), method: 'PUT', body }),
+      invalidatesTags: ['Permissions', 'Me', 'ApprovalInbox']
+    }),
+
     // Settings > Approval Rules
     saveApprovalLimits: builder.mutation({
       query: body => ({ url: url('/settings/approvals'), method: 'PUT', body }),
@@ -44,6 +54,10 @@ export const accessApi = pmsApi.injectEndpoints({
     getApprovalInbox: builder.query({
       query: () => url('/approvals'),
       providesTags: ['ApprovalInbox']
+    }),
+
+    changePassword: builder.mutation({
+      query: body => ({ url: url('/auth/change-password'), method: 'POST', body })
     }),
 
     // Development only: an Admin signs in as another user of the company to test their role.
@@ -97,8 +111,11 @@ export const {
   useSaveUserMutation,
   useRemoveUserMutation,
   useSaveApprovalLimitsMutation,
+  useGetPermissionsQuery,
+  useSavePermissionsMutation,
   useGetApprovalInboxQuery,
   useLoginAsMutation,
+  useChangePasswordMutation,
   useGetPortalProjectsQuery,
   useGetPortalProjectQuery,
   useDecideMilestoneAsClientMutation,

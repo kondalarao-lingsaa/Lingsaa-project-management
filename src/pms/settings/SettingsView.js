@@ -8,8 +8,6 @@ import { capitalizeWords } from 'src/pms/utils/validation'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
 import IndustryCard from './IndustryCard'
 import Card from './SettingsCard'
-import UsersRolesCard from './UsersRolesCard'
-import ApprovalRulesCard from './ApprovalRulesCard'
 import {
   useAddHolidayMutation,
   useDeleteHolidayMutation,
@@ -127,8 +125,6 @@ const SettingsView = () => {
         busy={deleting}
       />
 
-      <UsersRolesCard />
-      <ApprovalRulesCard />
       <IndustryCard />
 
       <div className='grid grid-cols-1 gap-4 xl:grid-cols-2'>

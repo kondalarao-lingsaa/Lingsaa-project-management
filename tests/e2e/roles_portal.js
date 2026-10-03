@@ -114,9 +114,23 @@ const plus = d => new Date(Date.now() + d * 864e5).toISOString().slice(0, 10)
 
     // ---------- Admin: Settings cards
     await as(null)
-    await br.goto(`${APP}/settings/`)
+    await br.goto(`${APP}/settings/access/`)
     await br.waitFor(`!!document.querySelector('[data-users-roles]') && !!document.querySelector('[data-approval-rules]')`, 'settings cards')
     check('Admin Settings shows Users & Roles and Approval Rules', await br.evalJs(`document.querySelector('[data-users-roles]').innerText.includes('Rohan Verma')`))
+
+    // ---------- Permission Matrix: give Members Billing (view), the Member's sidebar shows it, then reset
+    await br.waitFor(`!!document.querySelector('[data-permission-matrix]')`, 'matrix')
+    await br.evalJs(`document.querySelector('[data-matrix-role="member"]').click(); true`)
+    await br.sleep(400)
+    check('Settings is locked for the Member in the matrix', await br.evalJs(`document.querySelector('[data-cell="settings.view"]').disabled`))
+    await br.evalJs(`document.querySelector('[data-cell="billing.view"]').click(); true`)
+    await br.evalJs(`document.querySelector('[data-save-matrix]').click(); true`)
+    await br.waitFor(has('Permissions of Member saved'), 'saved')
+    await as(member)
+    await br.goto(`${APP}/dashboard/`)
+    await br.waitFor(`(document.querySelector('aside nav')?.innerText || '').includes('Timesheets')`, 'member nav again')
+    check('After the change, the Member sees Billing in the sidebar', (await sidebar()).includes('Billing'))
+    await api(DEV, 'PUT', '/settings/permissions', { role: 'member', permissions: null })
 
     const problems = br.problems().filter(p => p.kind === 'exception')
     check('no page errors', !problems.length, JSON.stringify(problems).slice(0, 300))

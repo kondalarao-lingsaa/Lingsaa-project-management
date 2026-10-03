@@ -6,7 +6,9 @@ const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 const PORT = 9333
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
-async function launch(profile, width = 1500, height = 1000) {
+// devLogin (default on): every page uses the built-in development login, as the tests always have. Pass
+// { devLogin: false } to test the real sign-in page.
+async function launch(profile, width = 1500, height = 1000, { devLogin = true } = {}) {
   const proc = spawn(CHROME, [`--remote-debugging-port=${PORT}`, '--headless=new', '--disable-gpu', '--hide-scrollbars', `--window-size=${width},${height}`, `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore' })
   let targets
   for (let i = 0; i < 60; i++) {
@@ -31,6 +33,10 @@ async function launch(profile, width = 1500, height = 1000) {
   const send = (method, params = {}) => new Promise(res => { const i = ++id; pending.set(i, res); ws.send(JSON.stringify({ id: i, method, params })) })
   await send('Page.enable'); await send('Runtime.enable'); await send('Network.enable')
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false })
+  // The flag must exist before the app's own scripts run, on every page load.
+  await send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `try { localStorage.${devLogin ? "setItem('pms_dev_login', '1')" : "removeItem('pms_dev_login')"} } catch (e) {}`
+  })
 
   const evalJs = async expr => {
     const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true })

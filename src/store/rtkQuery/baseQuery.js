@@ -4,6 +4,7 @@
 // can be copied to the root project unchanged.
 import { fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import toast from 'react-hot-toast'
+import { devLoginAllowed, loginPath, signOut } from 'src/pms/auth/session'
 
 // The dev token minted for the standalone app carries this company id.
 const DEV_CLIENT_ID = 900001
@@ -32,7 +33,15 @@ const handleQueryError = error => {
   const detail = error.data?.detail
 
   if (error.status === 404) return
-  if (error.status === 401) return toast.error('Session expired. Add a fresh NEXT_PUBLIC_PMS_DEV_TOKEN.')
+  if (error.status === 401) {
+    // The login has expired or is not valid any more: sign out and go to the login page once.
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      signOut()
+      window.location.assign(loginPath(window.location.pathname + window.location.search))
+    }
+
+    return
+  }
 
   toast.error(typeof detail === 'string' ? detail : error.data?.message || `Unexpected error (${error.status}).`)
 }
@@ -54,8 +63,8 @@ export const authedBaseQueryWithErrorHandling = withErrorHandling(
     prepareHeaders: headers => {
       const token =
         (typeof window !== 'undefined' && localStorage.getItem('access_token')) ||
-        // The dev token is for local testing only and never goes into a production build.
-        (process.env.NODE_ENV !== 'production' ? process.env.NEXT_PUBLIC_PMS_DEV_TOKEN : undefined)
+        // The built-in dev token: automated browser tests only, never a production build (see pms/auth/session.js).
+        (devLoginAllowed() ? process.env.NEXT_PUBLIC_PMS_DEV_TOKEN : undefined)
       if (token) headers.set('Authorization', `Bearer ${token}`)
 
       return headers

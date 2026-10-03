@@ -16,9 +16,13 @@ const App = ({ Component, pageProps }) => (
     </Head>
     <PmsSettingsProvider>
       <Toaster position='top-right' />
-      <PmsAppShell>
+      {Component.noShell ? (
         <Component {...pageProps} />
-      </PmsAppShell>
+      ) : (
+        <PmsAppShell>
+          <Component {...pageProps} />
+        </PmsAppShell>
+      )}
     </PmsSettingsProvider>
   </StoreProvider>
 )

@@ -160,7 +160,11 @@ export const PMS_MODULES = [
     key: 'settings',
     title: 'Settings',
     icon: 'tabler:settings',
-    screens: [{ key: null, title: 'Settings', permissionName: 'PMS Settings' }]
+    screens: [
+      { key: null, title: 'Settings', permissionName: 'PMS Settings', tabs: 'settings', tabLabel: 'Company Settings' },
+      // Users, the permission matrix and approval rules: who may do what.
+      { key: 'access', title: 'Users & Access', permissionName: 'PMS Users & Access', hidden: true, tabs: 'settings', tabLabel: 'Users & Access' }
+    ]
   }
 ]
 

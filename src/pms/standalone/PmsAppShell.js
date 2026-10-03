@@ -6,6 +6,7 @@ import PerfectScrollbar from 'react-perfect-scrollbar'
 import { pmsNavFor } from 'src/pms/config/pmsNav'
 import { PMS_BASE } from 'src/pms/config/pmsModules'
 import { isClient, useMe } from 'src/pms/access/useAccess'
+import { isSignedIn, loginPath } from 'src/pms/auth/session'
 import { inter } from './font'
 import PmsHeader from './PmsHeader'
 
@@ -78,6 +79,12 @@ const PmsAppShell = ({ children }) => {
   const router = useRouter()
   const { asPath } = router
   const current = normalise(asPath)
+  // Every PMS page needs a signed-in person; anyone else goes to the login page (and comes back after).
+  const [allowed, setAllowed] = useState(false)
+  useEffect(() => {
+    if (isSignedIn()) setAllowed(true)
+    else router.replace(loginPath(asPath))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const { me, failed } = useMe()
   // The sidebar follows the login's PMS role. It stays empty while the role loads (no flash of screens the person
   // cannot use); if the role cannot be read, every screen is listed and the server still refuses what is not allowed.
@@ -112,6 +119,9 @@ const PmsAppShell = ({ children }) => {
 
     return () => window.removeEventListener('keydown', onKey)
   }, [mobileOpen])
+
+  // Nothing is shown until the sign-in check has run (a signed-out visitor is on the way to the login page).
+  if (!allowed) return null
 
   return (
     <div className={`${inter.className} pms-layout flex min-h-screen bg-gray-50 text-gray-900`}>

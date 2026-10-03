@@ -3,13 +3,13 @@ import { Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material
 import { Icon } from '@iconify/react'
 import toast from 'react-hot-toast'
 import ConfirmDialog from 'src/pms/components/ConfirmDialog'
-import { GhostButton, PrimaryButton } from 'src/pms/components/ui'
+import { GhostButton, PrimaryButton, timeAgo } from 'src/pms/components/ui'
 import { digitsOnly, EMAIL_REGEX, personName } from 'src/pms/utils/validation'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
 import { useGetUsersQuery, useRemoveUserMutation, useSaveUserMutation } from 'src/store/apps/pms/accessApi'
 import SettingsCard from './SettingsCard'
 
-const EMPTY = { user_id: '', user_name: '', email: '', role: '', customer_name: '', is_active: true }
+const EMPTY = { user_id: '', user_name: '', email: '', role: '', customer_name: '', is_active: true, password: '' }
 
 const ROLE_TONE = {
   admin: '#4f46e5',
@@ -28,6 +28,11 @@ const validate = (form, isEdit) => {
   if ((form.user_name || '').trim().length < 2) e.user_name = 'Please Enter Name'
   if (form.email && !EMAIL_REGEX.test(form.email.trim())) e.email = 'Please Enter a valid Email'
   if (!form.role) e.role = 'Please Select Role'
+  if (form.password) {
+    if (form.password.length < 8) e.password = 'At least 8 characters'
+    else if (!/[A-Za-z]/.test(form.password) || !/\d/.test(form.password)) e.password = 'Use at least one letter and one number'
+    else if (!form.email) e.email = 'Add an Email: people sign in with their email and password'
+  }
   if (form.role === 'client' && !form.customer_name) e.customer_name = "Please Select the Client's company"
 
   return e
@@ -62,7 +67,8 @@ const UsersRolesCard = () => {
       email: form.email?.trim() || null,
       role: form.role,
       customer_name: form.role === 'client' ? form.customer_name : null,
-      is_active: form.is_active
+      is_active: form.is_active,
+      password: form.password || null
     }
     try {
       const resp = await saveUser({ id: form.id, body }).unwrap()
@@ -127,6 +133,7 @@ const UsersRolesCard = () => {
                 <th className='py-2 pr-3'>User ID</th>
                 <th className='py-2 pr-3'>Role</th>
                 <th className='py-2 pr-3'>Client company</th>
+                <th className='py-2 pr-3'>Login</th>
                 <th className='py-2 pr-3'>Access</th>
                 <th className='py-2 text-right'>Actions</th>
               </tr>
@@ -148,6 +155,9 @@ const UsersRolesCard = () => {
                     </span>
                   </td>
                   <td className='py-2 pr-3 text-gray-600'>{u.customer_name || '-'}</td>
+                  <td className='py-2 pr-3 text-xs text-gray-600'>
+                    {u.has_login ? (u.last_login_at ? `Last ${timeAgo(u.last_login_at)}` : 'Not yet signed in') : <span className='text-amber-700'>No password</span>}
+                  </td>
                   <td className='py-2 pr-3'>
                     {u.is_active ? <span className='text-emerald-700'>On</span> : <span className='text-red-600'>Off</span>}
                   </td>
@@ -158,7 +168,7 @@ const UsersRolesCard = () => {
                       style={{ color: 'var(--theme-solid)' }}
                       onClick={() => {
                         setErrors({})
-                        setForm({ ...u, email: u.email || '', customer_name: u.customer_name || '' })
+                        setForm({ ...u, email: u.email || '', customer_name: u.customer_name || '', password: '' })
                       }}
                     >
                       Change Role
@@ -270,6 +280,21 @@ const UsersRolesCard = () => {
                     ))}
                   </select>
                 )}
+              {field(
+                'password',
+                isEdit ? (form.has_login ? 'New Password (to reset it)' : 'Login Password') : 'Login Password',
+                <input
+                  id='password'
+                  type='password'
+                  autoComplete='new-password'
+                  value={form.password}
+                  maxLength={128}
+                  onChange={e => set('password', e.target.value)}
+                  className={inputClass('password')}
+                  placeholder={isEdit && form.has_login ? 'Leave empty to keep it' : 'At least 8 characters'}
+                />,
+                false
+              )}
               <label className='flex items-center gap-2 self-end text-sm text-slate-700'>
                 <input type='checkbox' id='is_active' checked={form.is_active} onChange={e => set('is_active', e.target.checked)} />
                 Access on
