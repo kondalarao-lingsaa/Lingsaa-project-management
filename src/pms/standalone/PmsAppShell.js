@@ -4,7 +4,7 @@ import { useRouter } from 'next/router'
 import { Icon } from '@iconify/react'
 import PerfectScrollbar from 'react-perfect-scrollbar'
 import { pmsNavFor } from 'src/pms/config/pmsNav'
-import { PMS_BASE } from 'src/pms/config/pmsModules'
+import { getScreenByPath, PMS_BASE, screenAllowed } from 'src/pms/config/pmsModules'
 import { isClient, useMe } from 'src/pms/access/useAccess'
 import { isSignedIn, loginPath } from 'src/pms/auth/session'
 import { inter } from './font'
@@ -75,6 +75,15 @@ const NavGroup = ({ item, open, onToggle, current }) => (
   </div>
 )
 
+const ShellMessage = ({ icon, title, text, action }) => (
+  <div className='mx-auto mt-10 max-w-lg rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm' data-shell-message>
+    <Icon icon={icon} width={36} className='mx-auto mb-3 text-slate-400' />
+    <div className='mb-1 text-lg font-semibold text-slate-800'>{title}</div>
+    <div className='text-sm text-gray-600'>{text}</div>
+    {action && <div className='mt-4 text-sm' style={{ color: 'var(--theme-solid)' }}>{action}</div>}
+  </div>
+)
+
 const PmsAppShell = ({ children }) => {
   const router = useRouter()
   const { asPath } = router
@@ -86,9 +95,13 @@ const PmsAppShell = ({ children }) => {
     else router.replace(loginPath(asPath))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const { me, failed } = useMe()
-  // The sidebar follows the login's PMS role. It stays empty while the role loads (no flash of screens the person
-  // cannot use); if the role cannot be read, every screen is listed and the server still refuses what is not allowed.
-  const navRoutes = React.useMemo(() => (me ? pmsNavFor(me.permissions) : failed ? pmsNavFor(null) : []), [me, failed])
+  // The sidebar follows the login's PMS role. It stays empty while the role loads, so nobody sees screens they
+  // cannot use.
+  const navRoutes = React.useMemo(() => (me ? pmsNavFor(me.permissions) : []), [me])
+  // A page opens only once the role is known and includes it, so a page outside the role never loads its data
+  // (no "Your role cannot..." messages from a bookmark or an old link).
+  const screen = getScreenByPath(current)
+  const pageAllowed = Boolean(me) && screenAllowed(me.permissions, screen)
   const portalPath = `${PMS_BASE}/portal`
 
   // A Client login only has the client portal.
@@ -164,7 +177,26 @@ const PmsAppShell = ({ children }) => {
 
       <div className='flex min-w-0 flex-1 flex-col'>
         <PmsHeader onMenuClick={() => setMobileOpen(true)} />
-        <main className='min-w-0 flex-1 p-3 sm:p-4 lg:p-6'>{children}</main>
+        <main className='min-w-0 flex-1 p-3 sm:p-4 lg:p-6'>
+          {pageAllowed ? (
+            children
+          ) : failed ? (
+            <ShellMessage
+              icon='tabler:plug-connected-x'
+              title='Your PMS access could not be loaded'
+              text='The server did not answer, or your access was switched off. Try again, or ask your PMS Admin.'
+              action={<button type='button' className='cursor-pointer font-semibold underline' onClick={() => window.location.reload()}>Try again</button>}
+            />
+          ) : me ? (
+            <ShellMessage
+              icon='tabler:lock'
+              title='This page is not part of your role'
+              text={`Your role (${me.role_title}) does not include ${screen?.title || 'this page'}. Use the menu on the left to open your pages.`}
+            />
+          ) : (
+            <div className='py-16 text-center text-sm text-gray-500'>Loading…</div>
+          )}
+        </main>
       </div>
     </div>
   )

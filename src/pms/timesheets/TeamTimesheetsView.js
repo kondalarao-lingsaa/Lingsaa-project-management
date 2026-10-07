@@ -6,6 +6,7 @@ import PmsPagination from 'src/pms/components/PmsPagination'
 import { Chip, formatDate, inr, NameAvatar } from 'src/pms/components/ui'
 import { taskDetailsPath } from 'src/pms/tasks/paths'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { useCan } from 'src/pms/access/useAccess'
 import { useGetProjectOptionsQuery } from 'src/store/apps/pms/projectsApi'
 import { useGetTimeEntriesQuery } from 'src/store/apps/pms/timesheetsApi'
 
@@ -28,6 +29,10 @@ const TeamTimesheetsView = () => {
   const [filters, setFilters] = useState({ projectId: '', status: '', dateFrom: '', dateTo: '' })
   const [memberInput, setMemberInput] = useState('')
   const member = useDebouncedValue(memberInput)
+  // Costs are money: the server sends them only to roles that see the budget.
+  const can = useCan()
+  const showMoney = can('budget', 'view')
+  const columns = ['Date', 'Person', 'Task', 'Hours', 'Status', ...(showMoney ? ['Cost'] : []), 'Reviewed By']
 
   const { data, isFetching } = useGetTimeEntriesQuery({ ...pagination, ...filters, member })
   const { data: projectsResp } = useGetProjectOptionsQuery(undefined)
@@ -43,11 +48,11 @@ const TeamTimesheetsView = () => {
 
   return (
     <PmsPage screenId='timesheets.teamTimesheets'>
-      <div className='mb-3 grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4'>
+      <div className={`mb-3 grid grid-cols-2 gap-3 md:gap-4 ${showMoney ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
         <StatCard icon='tabler:clock' tone='indigo' label='Total Hours' value={sv.hours || 0} hint={`${sv.count_pg || 0} entries`} />
         <StatCard icon='tabler:circle-check' tone='emerald' label='Approved' value={sv.by_status?.Approved || 0} hint='hours' />
         <StatCard icon='tabler:hourglass' tone='amber' label='Waiting' value={sv.by_status?.Submitted || 0} hint='hours submitted' />
-        <StatCard icon='tabler:coin-rupee' tone='violet' label='Cost' value={inr(sv.cost || 0)} hint='approved at locked rate, others at current rate' />
+        {showMoney && <StatCard icon='tabler:coin-rupee' tone='violet' label='Cost' value={inr(sv.cost || 0)} hint='approved at locked rate, others at current rate' />}
       </div>
 
       <div className={`${ThemeStyles.tableColor} rounded-md`}>
@@ -94,7 +99,7 @@ const TeamTimesheetsView = () => {
           <table className='w-full min-w-[1000px] text-left text-sm'>
             <thead className={ThemeStyles.tableHeaderBg}>
               <tr>
-                {['Date', 'Person', 'Task', 'Hours', 'Status', 'Cost', 'Reviewed By'].map(h => (
+                {columns.map(h => (
                   <th key={h} className={`${ThemeStyles.tableHeadCellsHeight} !px-3`}>
                     <div className={`pms-th-text ${['Hours', 'Cost'].includes(h) ? 'text-right' : h === 'Status' ? 'text-center' : ''}`}>{h}</div>
                   </th>
@@ -104,7 +109,7 @@ const TeamTimesheetsView = () => {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className='py-10 text-center text-slate-600'>
+                  <td colSpan={columns.length} className='py-10 text-center text-slate-600'>
                     {isFetching ? 'Loading...' : 'No hours match these filters.'}
                   </td>
                 </tr>
@@ -126,10 +131,10 @@ const TeamTimesheetsView = () => {
                       <div className='text-xs text-gray-500'>{e.project_code}</div>
                     </td>
                     <td className='pms-td-text px-3 py-2 text-right font-semibold tabular-nums'>{e.hours}</td>
-                    <td className='px-3 py-2 text-center' title={e.reject_reason || ''}>
+                    <td className='px-3 py-2 text-center' title={e.status === 'Rejected' ? e.reject_reason || '' : ''}>
                       <Chip tone={STATUS_TONE[e.status]}>{e.status}</Chip>
                     </td>
-                    <td className='pms-td-text px-3 py-2 text-right tabular-nums'>{e.cost === null ? '-' : inr(e.cost)}</td>
+                    {showMoney && <td className='pms-td-text px-3 py-2 text-right tabular-nums'>{e.cost === null ? '-' : inr(e.cost)}</td>}
                     <td className='pms-td-text px-3 py-2'>
                       {e.reviewed_by_name ? (
                         <>

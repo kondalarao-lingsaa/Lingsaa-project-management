@@ -72,7 +72,7 @@ const d = n => addDays(today, n)
   for (const s of ['Pending Approval', 'Approved', 'Active'])
     await api('POST', `/projects/${project.id}/status`, { status: s })
   await api('POST', `/projects/${project.id}/members`, {
-    member_name: 'Anita Rao',
+    member_name: 'Nisha Verma', // typed name nobody else books: the capacity numbers below need her 50% free
     role: 'Developer',
     allocation_pct: 50
   })
@@ -80,27 +80,27 @@ const d = n => addDays(today, n)
     member_name: 'Dev User',
     user_id: 1,
     role: 'Developer',
-    allocation_pct: 50,
+    allocation_pct: 20, // small: other demo and test projects may already hold much of Dev User's time
     hourly_rate: 500
   })
   const mk = async body => (await api('POST', '/tasks/create', { project_id: project.id, ...body })).data
   const aStart = today < monday ? monday : today > friday ? friday : today
   const big = await mk({
     title: 'Big build this week',
-    assignee_name: 'Anita Rao',
+    assignee_name: 'Nisha Verma',
     estimated_hours: 30,
     start_date: aStart,
     due_date: friday
   })
   const late = await mk({
     title: 'Late fix',
-    assignee_name: 'Anita Rao',
+    assignee_name: 'Nisha Verma',
     estimated_hours: 8,
     start_date: d(-6),
     due_date: d(-3)
   })
-  const review = await mk({ title: 'Review the docs', assignee_name: 'Anita Rao', estimated_hours: 2, due_date: d(3) })
-  await mk({ title: 'Someday research', assignee_name: 'Anita Rao', estimated_hours: 10 })
+  const review = await mk({ title: 'Review the docs', assignee_name: 'Nisha Verma', estimated_hours: 2, due_date: d(3) })
+  await mk({ title: 'Someday research', assignee_name: 'Nisha Verma', estimated_hours: 10 })
   await mk({ title: 'Nobody owns this', estimated_hours: 5, due_date: d(7) })
   const devTask = await mk({
     title: 'Dev logging task',
@@ -230,13 +230,13 @@ const d = n => addDays(today, n)
 
     // ---------- Capacity ----------
     await br.goto(`${ROOT}/resources/capacity/?projectId=${project.id}`)
-    await br.waitFor(`!!document.querySelector('[data-cell="Anita Rao|0"]')`, 'capacity grid')
+    await br.waitFor(`!!document.querySelector('[data-cell="Nisha Verma|0"]')`, 'capacity grid')
     const cap = (await api('GET', `/resources/capacity?project_id=${project.id}`)).detail
-    const w0 = cap.people.find(p => p.member_name === 'Anita Rao').weeks[0]
-    const cell = await br.evalJs(`document.querySelector('[data-cell="Anita Rao|0"]').innerText`)
+    const w0 = cap.people.find(p => p.member_name === 'Nisha Verma').weeks[0]
+    const cell = await br.evalJs(`document.querySelector('[data-cell="Nisha Verma|0"]').innerText`)
     // 30 h build + 8 h overdue fix + part of the moved 2 h review all land in this week; 20 h = 5 days x 8 h x 50%.
     check(
-      'Capacity: Anita this week shows planned / available from the API (20 h available, 38+ planned)',
+      'Capacity: Nisha this week shows planned / available from the API (20 h available, 38+ planned)',
       cell.replace(/\s/g, '') === `${Math.round(w0.planned)}/${Math.round(w0.available)}` &&
         w0.available === 20 &&
         w0.planned >= 38,
@@ -245,7 +245,7 @@ const d = n => addDays(today, n)
     check(
       'the over-full week is flagged Over with its %',
       w0.state === 'Over' &&
-        (await br.evalJs(`document.querySelector('[data-cell="Anita Rao|0"]').title`)).includes(`${w0.load_pct}%`)
+        (await br.evalJs(`document.querySelector('[data-cell="Nisha Verma|0"]').title`)).includes(`${w0.load_pct}%`)
     )
     check(
       'unassigned work card shows 1 task',
@@ -255,11 +255,11 @@ const d = n => addDays(today, n)
         .catch(() => false),
       JSON.stringify(cap.unassigned) + ' | ' + JSON.stringify(((await br.text()).match(/Unassigned[\s\S]{0,60}/) || [''])[0])
     )
-    await br.evalJs(`document.querySelector('[data-person="Anita Rao"]').click()`)
+    await br.evalJs(`document.querySelector('[data-person="Nisha Verma"]').click()`)
     await br.waitFor(has('Over-full in'), 'drill-down')
     const drill = await br.text()
     check(
-      'clicking Anita lists her tasks with the overdue one and the unscheduled hours',
+      'clicking Nisha lists her tasks with the overdue one and the unscheduled hours',
       drill.includes(late.task_key) && drill.includes('Overdue') && drill.includes('10 h of work has no due date')
     )
     await br.shot(`${SHOTS}/pms_capacity.png`)

@@ -153,6 +153,10 @@ const RiskDrawer = ({ open, onClose, project, risk }) => {
                         {m.member_name} - {m.role}
                       </option>
                     ))}
+                    {/* An owner removed from the team since: shown so the form says who it is, and can be changed. */}
+                    {membersResp && risk?.owner_member_id && !(membersResp.detail || []).some(m => m.id === risk.owner_member_id) && (
+                      <option value={risk.owner_member_id}>{risk.owner_name || 'Owner'} (left the team)</option>
+                    )}
                   </select>
                 </div>
                 <div className='space-y-1'>

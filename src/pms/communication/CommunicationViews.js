@@ -258,6 +258,7 @@ export const MentionsView = () => {
 /* ------------------------------------------------------------------------------ Activity */
 
 const PAGE = 20
+const MAX_ROWS = 500 // the API's largest page; older rows are reached with the filters
 
 // The activity timeline with its filters. picker: the project picker (company-wide screen); without it the feed
 // stays on projectId (Project Details > Activity tab).
@@ -377,11 +378,16 @@ export const ActivityFeed = ({ projectId, ready = true, picker = null }) => {
             </ol>
           </div>
         ))}
-        {rows.length < total && (
+        {rows.length < total && limit < MAX_ROWS && (
           <div className='mt-3 text-center'>
-            <GhostButton onClick={() => setLimit(l => l + PAGE)} disabled={isFetching}>
+            <GhostButton onClick={() => setLimit(l => Math.min(MAX_ROWS, l + PAGE))} disabled={isFetching}>
               Load more ({total - rows.length} older)
             </GhostButton>
+          </div>
+        )}
+        {rows.length < total && limit >= MAX_ROWS && (
+          <div className='mt-3 text-center text-xs text-gray-500'>
+            Showing the latest {MAX_ROWS} of {total} changes. Use the filters above to find older ones.
           </div>
         )}
       </div>

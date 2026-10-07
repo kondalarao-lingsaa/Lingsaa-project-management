@@ -1,6 +1,4 @@
 import React, { useState } from 'react'
-import { usePmsPermissions } from 'src/pms/adapters/permissions'
-import { getScreen } from 'src/pms/config/pmsModules'
 import RisksWorkspace from './RisksWorkspace'
 
 const VIEWS = [
@@ -12,7 +10,6 @@ const VIEWS = [
 // Project Details > Risks: what might go wrong (risks), what did (issues) and agreed changes (change requests).
 const ProjectRisksTab = ({ project }) => {
   const [view, setView] = useState('risks')
-  const { userPermissions } = usePmsPermissions(getScreen('risks.risks')?.permissionName)
 
   return (
     <div>
@@ -29,7 +26,7 @@ const ProjectRisksTab = ({ project }) => {
           </button>
         ))}
       </div>
-      <RisksWorkspace mode={view} project={project} canEdit={Boolean(userPermissions?.edit)} />
+      <RisksWorkspace mode={view} project={project} />
     </div>
   )
 }

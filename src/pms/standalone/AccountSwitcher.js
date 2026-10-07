@@ -215,7 +215,7 @@ const AccountSwitcher = () => {
               <Icon icon='tabler:arrow-back-up' width={17} /> Back to my login ({original.username})
             </button>
           )}
-          {isAdmin && usersResp?.detail?.users?.length > 1 && (
+          {process.env.NODE_ENV !== 'production' && isAdmin && usersResp?.detail?.users?.length > 1 && (
             <>
               <div className='px-3 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wider text-gray-400'>Sign in as (test a role)</div>
               <div className='max-h-[240px] overflow-y-auto'>

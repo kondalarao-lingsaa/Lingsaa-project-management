@@ -178,7 +178,7 @@ const ReportTable = ({ report }) => {
 const ReportChart = ({ report }) => {
   const chart = report.chart
   const data = useMemo(() => {
-    if (!chart || !report.rows.length) return []
+    if (!chart?.series?.length || !report.rows.length) return []
     if (chart.group_count) {
       const counts = {}
       report.rows.forEach(r => (counts[r[chart.x]] = (counts[r[chart.x]] || 0) + 1))
@@ -256,6 +256,8 @@ const ReportsView = () => {
   }, [router.isReady, router.query.report])
 
   const meta = catalog.find(c => c.key === reportKey)
+  // A link (?report=) to a report this role cannot run, or that does not exist.
+  const unavailable = Boolean(catalogResp) && !meta
   const uses = f => meta?.filters.includes(f)
   const dateError =
     uses('period') && filters.dateFrom && filters.dateTo && filters.dateTo < filters.dateFrom
@@ -419,7 +421,11 @@ const ReportsView = () => {
 
           {!report ? (
             <div className={`${ThemeStyles.tableColor} rounded-md p-10 text-center text-sm text-gray-500`}>
-              {isError ? 'The report could not be run.' : dateError || 'Running report...'}
+              {isError
+                ? 'The report could not be run.'
+                : unavailable
+                  ? 'This report is not available for your role. Pick a report from the list.'
+                  : dateError || 'Running report...'}
             </div>
           ) : (
             <div className={`report-print flex flex-col gap-3 transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
@@ -429,7 +435,7 @@ const ReportsView = () => {
                   {report.description} Generated {formatDate(report.generated_at)}.
                 </p>
               </div>
-              <div className='grid grid-cols-2 gap-3 xl:grid-cols-4'>
+              <div className='grid grid-cols-2 gap-3 xl:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]'>
                 {report.summary.map(s => (
                   <div key={s.label} className='rounded-xl border border-gray-200 bg-white p-3 shadow-sm'>
                     <div className='text-xs text-gray-500'>{s.label}</div>

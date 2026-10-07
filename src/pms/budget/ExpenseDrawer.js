@@ -61,6 +61,10 @@ const ExpenseDrawer = ({ open, onClose, expense, defaultProjectId }) => {
   const isLoading = saving || uploading || submitting
   const [receiptFile, setReceiptFile] = useState(null)
   const [hasReceipt, setHasReceipt] = useState(false)
+  // A save that failed half way (receipt upload or submit) already created the expense / attached the file:
+  // a retry updates that expense instead of adding a duplicate.
+  const [savedId, setSavedId] = useState(null)
+  const [uploadedFile, setUploadedFile] = useState(null)
   const { data: settingsResp } = useGetProjectSettingsQuery(form.project_id, { skip: !open || !form.project_id })
   const receiptLimit = form.project_id ? settingsResp?.detail?.receipt_required_above ?? null : null
   const receiptNeeded = receiptLimit !== null && Number(form.amount) > receiptLimit
@@ -99,6 +103,8 @@ const ExpenseDrawer = ({ open, onClose, expense, defaultProjectId }) => {
     if (!open) return
     setReceiptFile(null)
     setHasReceipt(Boolean(expense?.receipt_document_id))
+    setSavedId(null)
+    setUploadedFile(null)
   }, [open, expense])
 
   // The page may pick its project (from ?projectId=) just after the form opened: use it if nothing is chosen yet.
@@ -177,6 +183,7 @@ const ExpenseDrawer = ({ open, onClose, expense, defaultProjectId }) => {
       return
     }
     try {
+      const upload = receiptFile && receiptFile !== uploadedFile ? receiptFile : null
       const body = {
         project_id: Number(form.project_id),
         category: form.category,
@@ -187,12 +194,14 @@ const ExpenseDrawer = ({ open, onClose, expense, defaultProjectId }) => {
         billable: form.billable,
         milestone_id: form.milestone_id ? Number(form.milestone_id) : null,
         // With a receipt to upload, save first, attach the file, then send for approval.
-        submit: sendForApproval && !receiptFile
+        submit: sendForApproval && !upload
       }
-      const resp = await save({ id: expense?.id, body }).unwrap()
+      const resp = await save({ id: expense?.id || savedId || undefined, body }).unwrap()
+      if (!expense) setSavedId(resp.data.id)
       let message = resp.detail
-      if (receiptFile) {
-        await attachReceipt({ id: resp.data.id, file: receiptFile }).unwrap()
+      if (upload) {
+        await attachReceipt({ id: resp.data.id, file: upload }).unwrap()
+        setUploadedFile(upload)
         message = `${resp.data.expense_key} saved with its receipt`
         if (sendForApproval) message = (await submitExpense(resp.data.id).unwrap()).detail
       }
@@ -226,7 +235,7 @@ const ExpenseDrawer = ({ open, onClose, expense, defaultProjectId }) => {
                   </span>
                   <select
                     {...input('project_id')}
-                    disabled={isEdit}
+                    disabled={isEdit || Boolean(savedId)}
                     className={`${ThemeStyles.formsInputsDropdown}${border('project_id')}`}
                   >
                     <option value=''>Select project</option>

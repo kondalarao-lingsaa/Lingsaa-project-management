@@ -12,7 +12,9 @@ export const KIND = {
   expense: { icon: 'tabler:receipt', color: '#16a34a', label: 'Expense' },
   approval: { icon: 'tabler:rosette-discount-check', color: '#4f46e5', label: 'Approval' },
   message: { icon: 'tabler:messages', color: '#db2777', label: 'Client message' },
-  reminder: { icon: 'tabler:bell-ringing', color: '#dc2626', label: 'Reminder' }
+  reminder: { icon: 'tabler:bell-ringing', color: '#dc2626', label: 'Reminder' },
+  report: { icon: 'tabler:report-analytics', color: '#0d9488', label: 'Report' },
+  automation: { icon: 'tabler:robot', color: '#475569', label: 'Automatic' }
 }
 
 export const ACTION = {

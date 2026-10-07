@@ -29,6 +29,7 @@ import {
 import { usePmsPermissions } from 'src/pms/adapters/permissions'
 import { getScreen } from 'src/pms/config/pmsModules'
 import { useCreateProjectFromTemplateMutation } from 'src/store/apps/pms/settingsApi'
+import { useGetTeamMetaQuery } from 'src/store/apps/pms/teamApi'
 
 const EMPTY_FORM = {
   project_name: '',
@@ -115,6 +116,9 @@ const ProjectDrawer = ({ open, onClose, projectId, onSuccess, meta, template }) 
   // People with approval authority can create a project already approved (no separate approval step).
   const { userPermissions } = usePmsPermissions(getScreen('projects.allProjects')?.permissionName)
   const canApprove = Boolean(userPermissions?.approve)
+  // The company's login users: the manager must be one of them, or they cannot see or run the project.
+  const { data: teamMeta } = useGetTeamMetaQuery(undefined, { skip: !open })
+  const people = teamMeta?.detail?.people || []
 
   useEffect(() => {
     if (!open) return
@@ -150,7 +154,12 @@ const ProjectDrawer = ({ open, onClose, projectId, onSuccess, meta, template }) 
     // Typing a different manager name means the stored user id no longer applies.
     setForm(prev => {
       const updated = { ...prev, [id]: next }
-      if (id === 'project_manager_name') updated.project_manager_id = ''
+      if (id === 'project_manager_name') {
+        // A name picked from the list (or typed exactly) links that person's login.
+        const person = people.find(p => p.name.toLowerCase() === String(next).trim().toLowerCase())
+        updated.project_manager_id = person ? String(person.user_id) : ''
+        if (person) updated.project_manager_name = person.name
+      }
       // A GSTIN contains the PAN (characters 3-12), so a complete GSTIN fills an empty PAN.
       if (id === 'customer_gstin' && GSTIN_REGEX.test(next) && !prev.customer_pan)
         updated.customer_pan = next.slice(2, 12)
@@ -184,7 +193,8 @@ const ProjectDrawer = ({ open, onClose, projectId, onSuccess, meta, template }) 
     const found = collectErrors(PROJECT_VALIDATED_FIELDS, getProjectFieldError, form)
     // Approval needs an end date and a budget (same rule as Submit for Approval).
     if (andApprove) {
-      if (!form.end_date && !found.end_date) found.end_date = 'Please Select End Date - it is needed to approve the project'
+      // From a template an empty End Date is filled from the template length, so it is not needed here.
+      if (!form.end_date && !found.end_date && !template) found.end_date = 'Please Select End Date - it is needed to approve the project'
       if ((form.budget === '' || form.budget === null || form.budget === undefined) && !found.budget) found.budget = 'Please Enter Budget - it is needed to approve the project'
     }
     const ids = Object.keys(found)
@@ -499,10 +509,29 @@ const ProjectDrawer = ({ open, onClose, projectId, onSuccess, meta, template }) 
                         {...input('project_manager_name')}
                         type='text'
                         maxLength={200}
-                        placeholder='Who runs this project?'
+                        list='pms-managers'
+                        autoComplete='off'
+                        placeholder='Start typing, then pick the person'
                         className={`${ThemeStyles.formsInputs}${errorBorder('project_manager_name')}`}
                       />
-                      {fieldError('project_manager_name')}
+                      <datalist id='pms-managers'>
+                        {people.map(p => (
+                          <option key={p.user_id} value={p.name}>
+                            {p.email || ''}
+                          </option>
+                        ))}
+                      </datalist>
+                      {fieldError('project_manager_name') ||
+                        (form.project_manager_name.trim() &&
+                          (form.project_manager_id ? (
+                            <span className='block text-xs font-semibold text-green-600' data-login-link='linked'>
+                              Linked to their login: they will see and run this project
+                            </span>
+                          ) : (
+                            <span className='block text-xs font-semibold text-amber-600' data-login-link='none'>
+                              Not linked to a login: pick the name from the list, or they cannot see this project
+                            </span>
+                          )))}
                     </div>
                   </div>
                 </div>
@@ -519,10 +548,11 @@ const ProjectDrawer = ({ open, onClose, projectId, onSuccess, meta, template }) 
 
           <DrawerFooter
             onClose={onClose}
-            onSubmit={() => handleSubmit(false)}
-            submitText={isEdit ? 'Update' : 'Create Draft'}
+            // Admin / Director (the approvers) only Submit: the project is created and goes through the approval
+            // rules at once (their authority covers level 1). A Project Manager saves a Draft and submits it later.
+            onSubmit={() => handleSubmit(!isEdit && canApprove)}
+            submitText={isEdit ? 'Update' : canApprove ? 'Submit' : 'Create Draft'}
             disabled={isSubmitting || isLoadingDetail}
-            extra={!isEdit && canApprove ? { text: 'Create & Approve', onClick: () => handleSubmit(true) } : undefined}
           />
         </div>
       </div>

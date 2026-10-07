@@ -18,7 +18,7 @@ export const planningApi = pmsApi.injectEndpoints({
     // Dragging a bar: new dates, checked against the project and its dependencies.
     rescheduleTask: builder.mutation({
       query: ({ id, startDate, dueDate }) => ({ url: url(`/tasks/${id}/schedule`), method: 'POST', body: { start_date: startDate, due_date: dueDate } }),
-      invalidatesTags: ['Timeline', 'Roadmap', 'PlanningDependencies', 'TaskList', 'TaskBoard', 'TaskDetail', 'TaskActivity', 'Dashboard']
+      invalidatesTags: ['Timeline', 'Roadmap', 'PlanningDependencies', 'TaskList', 'TaskBoard', 'TaskDetail', 'TaskDependencies', 'TaskActivity', 'Dashboard']
     }),
 
     getRoadmap: builder.query({

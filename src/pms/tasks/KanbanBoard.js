@@ -9,6 +9,7 @@ import { Chip, formatDate, NameAvatar, PrimaryButton, PRIORITY_TONE, TASK_STATUS
 import { usePmsPermissions } from 'src/pms/adapters/permissions'
 import { getScreen } from 'src/pms/config/pmsModules'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { useCan } from 'src/pms/access/useAccess'
 import { useGetProjectOptionsQuery } from 'src/store/apps/pms/projectsApi'
 import { useGetTaskBoardQuery, useGetTaskMetaQuery, useMoveTaskMutation } from 'src/store/apps/pms/tasksApi'
 import { useGetProjectMembersQuery } from 'src/store/apps/pms/teamApi'
@@ -130,6 +131,8 @@ const KanbanBoard = ({ projectId, sprintId, embedded = false }) => {
   const screen = getScreen(SCREEN_ID)
   const { userPermissions } = usePmsPermissions(screen?.permissionName)
   const canEdit = Boolean(userPermissions?.edit)
+  const can = useCan()
+  const canAdd = can('tasks', 'add')
 
   // Standalone board: the project filter can come from the URL (?projectId=), e.g. from a project page.
   const [projectFilter, setProjectFilter] = useState('')
@@ -249,7 +252,7 @@ const KanbanBoard = ({ projectId, sprintId, embedded = false }) => {
     onDragEnd()
   }
 
-  const addButton = canEdit && (
+  const addButton = canAdd && (
     <PrimaryButton onClick={() => setDrawerOpen(true)}>
       Add Task <PlusCircle size={16} />
     </PrimaryButton>
@@ -371,7 +374,7 @@ const KanbanBoard = ({ projectId, sprintId, embedded = false }) => {
                     {cards.length}
                   </span>
                 </div>
-                {canEdit && status === statuses[0] && (
+                {canAdd && status === statuses[0] && (
                   <button
                     type='button'
                     onClick={() => setDrawerOpen(true)}

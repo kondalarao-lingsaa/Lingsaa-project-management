@@ -83,7 +83,12 @@ const d = n => {
     await br.shot(`${SHOTS}/pms_invoice_expenses.png`)
     await br.evalJs(`${btn('Create Draft')}.click()`)
     await br.waitFor(has('INV-'), 'invoice created')
-    const inv = ((await api('GET', `/billing/invoices?project_id=${project.id}&page_size=5`)).detail || [])[0]
+    // Other invoices already show "INV-" on the page, so wait for this project's invoice in the API.
+    let inv
+    for (let i = 0; i < 20 && !inv; i++) {
+      inv = ((await api('GET', `/billing/invoices?project_id=${project.id}&page_size=5`)).detail || [])[0]
+      if (!inv) await br.sleep(500)
+    }
     invoiceId = inv && inv.id
     const detail = inv ? (await api('GET', `/billing/invoices/${inv.id}`)).detail : {}
     check('Draft invoice created with the expense line (subtotal ₹3,000)', detail.subtotal === 3000 && (detail.lines || []).some(l => l.description.startsWith(`Expense ${hotel.expense_key}`)), JSON.stringify(detail.lines))

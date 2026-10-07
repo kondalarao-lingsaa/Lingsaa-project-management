@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { Dialog } from '@mui/material'
 import { Icon } from '@iconify/react'
-import { PMS_BASE, PMS_SCREENS } from 'src/pms/config/pmsModules'
+import { PMS_BASE, PMS_SCREENS, screenAllowed } from 'src/pms/config/pmsModules'
+import { isClient, useMe } from 'src/pms/access/useAccess'
 import { useGlobalSearchQuery } from 'src/store/apps/pms/communicationApi'
 
 // Ctrl+K (or the header search box): jump to any screen by name, or find any record across the PMS.
@@ -38,7 +39,9 @@ const GlobalSearch = () => {
   const [active, setActive] = useState(0)
   const listRef = useRef(null)
   const term = useDebounced(q.trim())
-  const { data, isFetching } = useGlobalSearchQuery(term, { skip: !open || term.length < 2 })
+  const { me } = useMe()
+  const client = isClient(me)
+  const { data, isFetching } = useGlobalSearchQuery(term, { skip: !open || term.length < 2 || !me || client })
 
   // Ctrl+K / Cmd+K anywhere opens it.
   useEffect(() => {
@@ -62,7 +65,7 @@ const GlobalSearch = () => {
   const groups = useMemo(() => {
     const text = q.trim().toLowerCase()
     const screens = PMS_SCREENS.filter(
-      s => !s.hidden && (!text || `${s.title} ${s.groupTitle}`.toLowerCase().includes(text))
+      s => !s.hidden && screenAllowed(me?.permissions, s) && (!text || `${s.title} ${s.groupTitle}`.toLowerCase().includes(text))
     )
       .slice(0, text ? 6 : 8)
       .map(s => ({
@@ -71,7 +74,7 @@ const GlobalSearch = () => {
         href: `${s.path}/`
       }))
     const records =
-      term.length >= 2 && term === q.trim()
+      !client && term.length >= 2 && term === q.trim()
         ? (data?.detail || []).map(g => ({
             kind: g.kind,
             items: g.items.map(i => ({ ...i, href: `${PMS_BASE}/${i.link}` }))
@@ -79,7 +82,7 @@ const GlobalSearch = () => {
         : []
 
     return [...(screens.length ? [{ kind: 'Screens', items: screens }] : []), ...records]
-  }, [q, term, data])
+  }, [q, term, data, client, me?.permissions])
   const flat = groups.flatMap(g => g.items)
 
   useEffect(() => setActive(0), [q, data])

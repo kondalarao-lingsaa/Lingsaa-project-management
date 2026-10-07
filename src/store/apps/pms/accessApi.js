@@ -80,7 +80,7 @@ export const accessApi = pmsApi.injectEndpoints({
         method: 'POST',
         body: { decision, feedback }
       }),
-      invalidatesTags: ['Portal', 'Milestones', ...afterDecision]
+      invalidatesTags: ['Portal', 'Milestones', 'Invoices', 'Billable', ...afterDecision]
     }),
     sendPortalMessage: builder.mutation({
       query: ({ projectId, body }) => ({ url: url(`/portal/projects/${projectId}/messages`), method: 'POST', body: { body } }),

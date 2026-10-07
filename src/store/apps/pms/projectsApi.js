@@ -66,6 +66,15 @@ export const projectsApi = pmsApi.injectEndpoints({
       }),
       invalidatesTags: (r, e, { id }) => [...PROJECT_WIDE_TAGS, 'ApprovalInbox', 'Notifications', { type: 'ProjectDetail', id: Number(id) }]
     }),
+    // Closed -> Active again (Admin / Director, with a reason).
+    reopenProject: builder.mutation({
+      query: ({ id, reason }) => ({
+        url: `${PMS_BASE_URL}/projects/${id}/reopen?${pmsAuthQuery()}`,
+        method: 'POST',
+        body: { reason }
+      }),
+      invalidatesTags: (r, e, { id }) => [...PROJECT_WIDE_TAGS, 'Notifications', { type: 'ProjectDetail', id: Number(id) }]
+    }),
 
     deleteProject: builder.mutation({
       query: id => ({ url: `${PMS_BASE_URL}/projects/${id}?${pmsAuthQuery()}`, method: 'DELETE' }),
@@ -84,5 +93,6 @@ export const {
   useCreateProjectMutation,
   useUpdateProjectMutation,
   useChangeProjectStatusMutation,
+  useReopenProjectMutation,
   useDeleteProjectMutation
 } = projectsApi

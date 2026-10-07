@@ -32,6 +32,7 @@ import {
 import { taskDetailsPath } from 'src/pms/tasks/paths'
 import KanbanBoard from 'src/pms/tasks/KanbanBoard'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { useCan } from 'src/pms/access/useAccess'
 import {
   useAddSprintTasksMutation,
   useCompleteSprintMutation,
@@ -138,6 +139,7 @@ const useSprintActions = () => {
 /* -------------------------------------------------------------------------- Sprint List */
 
 export const SprintListView = () => {
+  const can = useCan()
   const { projectId, project, picker } = useProjectPicker()
   const { data, isFetching } = useGetProjectSprintsQuery(projectId, { skip: !projectId })
   const actions = useSprintActions()
@@ -152,7 +154,8 @@ export const SprintListView = () => {
     <PmsPage
       screenId='sprints.sprintList'
       actions={
-        project && (
+        project &&
+        can('sprints', 'add') && (
           <PrimaryButton onClick={() => setDrawer({ sprint: null })}>
             New Sprint <PlusCircle size={16} />
           </PrimaryButton>
@@ -346,7 +349,7 @@ export const SprintListView = () => {
                               Board
                             </Link>
                           )}
-                          {s.status === 'Planned' && (
+                          {s.status === 'Planned' && can('sprints', 'edit') && (
                             <button
                               type='button'
                               onClick={() => run(actions.start, s.id, 'Sprint started')}
@@ -356,7 +359,7 @@ export const SprintListView = () => {
                               Start
                             </button>
                           )}
-                          {s.status === 'Active' && (
+                          {s.status === 'Active' && can('sprints', 'edit') && (
                             <button
                               type='button'
                               onClick={() => setCompleting(s)}
@@ -366,7 +369,7 @@ export const SprintListView = () => {
                               Complete
                             </button>
                           )}
-                          {s.status !== 'Completed' && (
+                          {s.status !== 'Completed' && can('sprints', 'edit') && (
                             <button
                               type='button'
                               onClick={() => setDrawer({ sprint: s })}
@@ -376,7 +379,7 @@ export const SprintListView = () => {
                               Edit
                             </button>
                           )}
-                          {s.status === 'Planned' && (
+                          {s.status === 'Planned' && can('sprints', 'delete') && (
                             <button
                               type='button'
                               onClick={() => setDeleting(s)}
@@ -437,6 +440,8 @@ const TaskLine = ({ t, selected, onToggle, action }) => (
 )
 
 export const SprintPlanningView = ({ backlogOnly = false }) => {
+  const can = useCan()
+  const canPlan = can('sprints', 'edit')
   const { projectId, project, picker } = useProjectPicker()
   const { data: sprintsResp } = useGetProjectSprintsQuery(projectId, { skip: !projectId })
   const { data: backlogResp, isFetching: loadingBacklog } = useGetBacklogQuery(projectId, { skip: !projectId })
@@ -510,7 +515,7 @@ export const SprintPlanningView = ({ backlogOnly = false }) => {
             ))}
           </select>
         )}
-        {project && (
+        {project && can('sprints', 'add') && (
           <GhostButton onClick={() => setDrawerOpen(true)}>
             <Icon icon='tabler:plus' width={16} /> New Sprint
           </GhostButton>
@@ -533,10 +538,12 @@ export const SprintPlanningView = ({ backlogOnly = false }) => {
                     : ''}
                 </div>
               </div>
+              {canPlan && (
               <PrimaryButton onClick={addSelected} disabled={adding || !sprint} className='ms-auto'>
                 Add {selected.length || ''} to {sprint ? sprint.name : 'sprint'}{' '}
                 <Icon icon='tabler:arrow-right' width={16} />
               </PrimaryButton>
+              )}
             </div>
             {selected.length > 0 && sprint && (
               <div className='mb-2 text-xs text-gray-600'>
@@ -553,8 +560,10 @@ export const SprintPlanningView = ({ backlogOnly = false }) => {
                   key={t.id}
                   t={t}
                   selected={selected.includes(t.id)}
-                  onToggle={() =>
-                    setSelected(prev => (prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id]))
+                  onToggle={
+                    canPlan
+                      ? () => setSelected(prev => (prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id]))
+                      : undefined
                   }
                 />
               ))}
@@ -607,7 +616,9 @@ export const SprintPlanningView = ({ backlogOnly = false }) => {
                         key={t.id}
                         t={t}
                         action={
-                          !t.parent_task_id && (
+                          canPlan &&
+                          // A subtask moves with its main task, unless that one is Done (then it is planned on its own).
+                          !inSprint.some(p => p.id === t.parent_task_id && p.status !== 'Done') && (
                             <button
                               type='button'
                               onClick={() => run(remove, { id: sprint.id, taskId: t.id }, 'Moved to backlog')}
@@ -642,6 +653,7 @@ export const BacklogView = () => <SprintPlanningView backlogOnly />
 /* ------------------------------------------------------------------------- Sprint Board */
 
 export const SprintBoardView = () => {
+  const can = useCan()
   const { projectId, picker } = useProjectPicker()
   const { data } = useGetProjectSprintsQuery(projectId, { skip: !projectId })
   const actions = useSprintActions()
@@ -737,7 +749,7 @@ export const SprintBoardView = () => {
                 </div>
                 <ProgressBar value={sprint.progress} />
               </div>
-              {sprint.status === 'Active' && (
+              {sprint.status === 'Active' && can('sprints', 'edit') && (
                 <PrimaryButton onClick={() => setCompleting(sprint)} className='mt-3'>
                   <Icon icon='tabler:flag-check' width={16} /> Complete Sprint
                 </PrimaryButton>

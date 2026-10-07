@@ -8,6 +8,7 @@ import ConfirmDialog from 'src/pms/components/ConfirmDialog'
 import { Chip, GhostButton, PrimaryButton } from 'src/pms/components/ui'
 import { taskDetailsPath } from 'src/pms/tasks/paths'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { useCan } from 'src/pms/access/useAccess'
 import { useGetMyWeekQuery, useSaveTimeEntryMutation, useSubmitWeekMutation } from 'src/store/apps/pms/timesheetsApi'
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -90,12 +91,19 @@ const MyTimesheetView = () => {
   }, [week, extraTasks])
 
   const available = (week?.tasks || []).filter(t => t.can_log && !rows.some(r => r.task_id === t.task_id))
-  const editable = week && ['Empty', 'Draft', 'Rejected'].includes(week.status)
+  const can = useCan()
+  const mayLog = can('timesheets', 'add')
+  const editable = week && mayLog && ['Empty', 'Draft', 'Rejected'].includes(week.status)
   const rejected = rows.flatMap(r => Object.entries(r.cells).filter(([, c]) => c.status === 'Rejected').map(([day, c]) => ({ row: r, day, cell: c })))
   const canSubmit = week && ['Draft', 'Rejected'].includes(week.status) && week.week_total > 0
 
+  // locked_before: the project's lock-days setting closes older days, except for hours sent back to fix.
   const cellLocked = (row, day, cell) =>
-    !row.can_log || day > week.today || (cell && ['Submitted', 'Approved'].includes(cell.status))
+    !mayLog ||
+    !row.can_log ||
+    day > week.today ||
+    (cell && ['Submitted', 'Approved'].includes(cell.status)) ||
+    (Boolean(row.locked_before) && day < row.locked_before && !cell?.sent_back)
 
   const commit = async (row, day) => {
     const key = `${row.task_id}|${day}`
@@ -177,6 +185,7 @@ const MyTimesheetView = () => {
     <PmsPage
       screenId='timesheets.myTimesheets'
       actions={
+        mayLog &&
         editable !== undefined && (
           <PrimaryButton onClick={() => setConfirmSubmit(true)} disabled={!canSubmit || isSubmitting}>
             <Send size={15} /> Submit Week
@@ -324,7 +333,13 @@ const MyTimesheetView = () => {
                             maxLength={5}
                             value={value}
                             disabled={locked}
-                            title={cell?.status === 'Rejected' ? `Rejected: ${cell.reject_reason}` : cellErrors[key] || cell?.status || (day > (week?.today || '') ? 'Future date' : '')}
+                            title={
+                              cell?.status === 'Rejected'
+                                ? `Rejected: ${cell.reject_reason}`
+                                : cellErrors[key] ||
+                                  cell?.status ||
+                                  (day > (week?.today || '') ? 'Future date' : row.locked_before && day < row.locked_before ? 'Locked (Project Settings)' : '')
+                            }
                             onChange={e => {
                               const v = e.target.value.replace(/[^\d.]/g, '')
                               setDrafts(prev => ({ ...prev, [key]: v }))
@@ -364,7 +379,7 @@ const MyTimesheetView = () => {
           </div>
 
           {/* New rows are always allowed: already submitted/approved hours stay locked cell by cell, new hours start as Draft. */}
-          {week && (
+          {week && mayLog && (
             <div className='flex flex-col gap-2 border-t border-gray-200 p-3 sm:flex-row sm:items-center'>
               <select id='add_task_row' value={picked} onChange={e => setPicked(e.target.value)} className={`${ThemeStyles.formsInputsDropdown} sm:max-w-md`}>
                 <option value=''>{available.length ? 'Add a task to this week...' : 'No more tasks to add (only open tasks of your Active projects)'}</option>

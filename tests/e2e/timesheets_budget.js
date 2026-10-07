@@ -131,7 +131,8 @@ const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')
     await br.sleep(800)
     await br.waitFor(`[...document.querySelectorAll('main select option')].some(o => o.value === '${project.id}')`, 'project filter options')
     await br.evalJs(`(() => { const sel = [...document.querySelectorAll('main select')].find(s => [...s.options].some(o => o.value === '${project.id}')); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, '${project.id}'); sel.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
-    await br.waitFor(all(has('qa.manager'), `document.querySelectorAll('tbody tr').length === 1`), 'filtered entries')
+    // The reviewer is shown as a person's name ("Qa Manager"), not the raw login name.
+    await br.waitFor(all(has('Qa Manager'), `document.querySelectorAll('tbody tr').length === 1`), 'filtered entries')
     check('Team Timesheets: project filter shows the Approved entry and who approved it', (await br.text()).includes('Approved'))
 
     await br.goto(`${ROOT}/timesheets/myTimesheets/`)

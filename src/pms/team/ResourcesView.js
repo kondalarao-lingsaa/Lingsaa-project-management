@@ -9,6 +9,7 @@ import usePagedRows from 'src/pms/components/usePagedRows'
 import { AllocationBar, allocationTone, Chip, NameAvatar, PrimaryButton } from 'src/pms/components/ui'
 import { projectDetailsPath } from 'src/pms/projects/ProjectsListView'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { useCan } from 'src/pms/access/useAccess'
 import { useGetResourceAllocationQuery } from 'src/store/apps/pms/teamApi'
 import MemberDrawer from './MemberDrawer'
 
@@ -78,6 +79,11 @@ const TeamTable = ({ people }) => (
                   </Chip>
                 </Link>
               ))}
+              {p.other_allocation > 0 && (
+                <span title='Projects you do not have access to'>
+                  <Chip tone='slate'>Other projects · {p.other_allocation}%</Chip>
+                </span>
+              )}
             </div>
           </td>
           <td className={`${ThemeStyles.tableBodyCellsHeight} !px-3`}>
@@ -171,6 +177,11 @@ const AllocationMatrix = ({ people }) => {
                 >
                   {p.total_allocation}%
                 </span>
+                {p.other_allocation > 0 && (
+                  <div className='text-[11px] text-gray-500' title='Projects you do not have access to'>
+                    incl. {p.other_allocation}% other
+                  </div>
+                )}
               </td>
             </tr>
           )
@@ -182,6 +193,7 @@ const AllocationMatrix = ({ people }) => {
 
 // mode 'team' = Resources > Team, 'allocation' = Resources > Resource Allocation (same data, two views).
 const ResourcesView = ({ mode = 'team' }) => {
+  const can = useCan()
   const screenId = mode === 'allocation' ? 'resources.allocation' : 'resources.team'
   const [searchInput, setSearchInput] = useState('')
   const search = useDebouncedValue(searchInput)
@@ -199,9 +211,11 @@ const ResourcesView = ({ mode = 'team' }) => {
     <PmsPage
       screenId={screenId}
       actions={
-        <PrimaryButton onClick={() => setChooser(true)}>
-          Add Member <PlusCircle size={16} />
-        </PrimaryButton>
+        can('resources', 'add') && (
+          <PrimaryButton onClick={() => setChooser(true)}>
+            Add Member <PlusCircle size={16} />
+          </PrimaryButton>
+        )
       }
     >
       <ChooseProjectDialog

@@ -17,6 +17,6 @@ export const pmsAuthQuery = () => {
 export const pmsApi = createApi({
   reducerPath: 'pmsApi',
   baseQuery: authedBaseQueryWithErrorHandling,
-  tagTypes: ['ProjectList', 'ProjectDetail', 'TaskList', 'TaskDetail', 'TaskBoard', 'TaskComments', 'TaskDependencies', 'TaskWatchers', 'TaskActivity', 'ProjectMembers', 'ResourceAllocation', 'MyWeek', 'TimeEntries', 'Approvals', 'ProjectBudget', 'BudgetOverview', 'Milestones', 'Billable', 'Invoices', 'Dashboard', 'Risks', 'Issues', 'ChangeRequests', 'Documents', 'DocumentVersions', 'Timeline', 'Roadmap', 'PlanningDependencies', 'Sprints', 'Backlog', 'Notifications', 'Settings', 'Templates', 'Expenses', 'ProjectSettings', 'TeamMeta', 'Me', 'Users', 'ApprovalInbox', 'Portal', 'ClientMessages', 'Permissions'],
+  tagTypes: ['ProjectList', 'ProjectDetail', 'TaskList', 'TaskDetail', 'TaskBoard', 'TaskComments', 'TaskDependencies', 'TaskWatchers', 'TaskActivity', 'ProjectMembers', 'ResourceAllocation', 'MyWeek', 'TimeEntries', 'Approvals', 'ProjectBudget', 'BudgetOverview', 'Milestones', 'Billable', 'Invoices', 'Dashboard', 'Risks', 'Issues', 'ChangeRequests', 'Documents', 'DocumentVersions', 'Timeline', 'Roadmap', 'PlanningDependencies', 'Sprints', 'Backlog', 'Notifications', 'Settings', 'Templates', 'Expenses', 'ProjectSettings', 'TeamMeta', 'Me', 'Users', 'ApprovalInbox', 'Portal', 'ClientMessages', 'Permissions', 'Automation', 'RecurringTasks', 'AssigneeSuggestions'],
   endpoints: () => ({})
 })

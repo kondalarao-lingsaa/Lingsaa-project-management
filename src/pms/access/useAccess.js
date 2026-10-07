@@ -18,3 +18,14 @@ export const useCan = () => {
 }
 
 export const isClient = me => me?.role === 'client'
+
+// The project's own manager (or its creator while it has no manager login), a Director or an Admin: they edit,
+// delete and move the project (server: runs_project).
+export const runsProject = (me, project) =>
+  Boolean(me && project) &&
+  (['admin', 'director'].includes(me.role) ||
+    (Boolean(me.user_id) &&
+      (project.project_manager_id === me.user_id || (!project.project_manager_id && project.created_by === me.user_id))))
+
+// The team is changed by whoever runs the project, or a Resource Manager (who staffs projects).
+export const staffsProject = (me, project) => runsProject(me, project) || me?.role === 'resource_manager'

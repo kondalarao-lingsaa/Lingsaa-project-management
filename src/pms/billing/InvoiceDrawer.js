@@ -50,14 +50,6 @@ const InvoiceDrawer = ({ open, onClose, projectId, milestoneId, onCreated }) => 
   // Project Settings: the project's default GST % and payment terms.
   const { data: settingsResp } = useGetProjectSettingsQuery(form.project_id, { skip: !open || !form.project_id })
   const projectSettings = form.project_id ? settingsResp?.detail : null
-  useEffect(() => {
-    if (!projectSettings) return
-    setForm(prev => ({
-      ...prev,
-      tax_pct: String(projectSettings.default_tax_pct),
-      payment_terms_days: String(projectSettings.default_payment_terms)
-    }))
-  }, [projectSettings])
 
   const projects = (Array.isArray(projectsResp?.detail) ? projectsResp.detail : []).filter(
     p => p.project_type !== 'Internal'
@@ -74,6 +66,24 @@ const InvoiceDrawer = ({ open, onClose, projectId, milestoneId, onCreated }) => 
       milestone_id: milestoneId ? String(milestoneId) : ''
     })
   }, [open, projectId, milestoneId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The project's default GST % and payment terms. Declared after the reset above and re-run on every open,
+  // so reopening the drawer (settings already cached) does not fall back to 18% / 30 days.
+  useEffect(() => {
+    if (!open || !projectSettings) return
+    setForm(prev => ({
+      ...prev,
+      tax_pct: String(projectSettings.default_tax_pct),
+      payment_terms_days: String(projectSettings.default_payment_terms)
+    }))
+  }, [open, projectSettings])
+
+  // A value the list does not offer (e.g. a project default set elsewhere) is still shown as itself, never as
+  // the first option while a different value is sent.
+  const withCurrent = (list, value) =>
+    value === '' || list.some(v => Number(v) === Number(value)) ? list : [...list, Number(value)].sort((a, b) => a - b)
+  const taxRates = withCurrent(meta?.tax_rates || [0, 5, 12, 18, 28], form.tax_pct)
+  const paymentTerms = withCurrent(meta?.payment_terms || [0, 7, 15, 30, 45, 60, 90], form.payment_terms_days)
 
   // With no accepted milestone left but hours to bill, start on Time & Material and pre-fill the period.
   useEffect(() => {
@@ -182,7 +192,9 @@ const InvoiceDrawer = ({ open, onClose, projectId, milestoneId, onCreated }) => 
   }
 
   const section = ThemeStyles.drawerHeadingSection
-  const typeButton = (type, hint) => (
+  // Fixed Price work is paid through milestones, so a period invoice there carries billable expenses only.
+  const expensesOnly = billable?.bills_hours === false
+  const typeButton = (type, hint, label = type) => (
     <button
       type='button'
       onClick={() => handleChange({ target: { id: 'invoice_type', value: type } })}
@@ -192,7 +204,7 @@ const InvoiceDrawer = ({ open, onClose, projectId, milestoneId, onCreated }) => 
           : 'border-gray-200 hover:bg-gray-50'
       }`}
     >
-      <div className='text-[14px] font-semibold text-slate-800'>{type}</div>
+      <div className='text-[14px] font-semibold text-slate-800'>{label}</div>
       <div className='text-xs text-gray-500'>{hint}</div>
     </button>
   )
@@ -259,16 +271,24 @@ const InvoiceDrawer = ({ open, onClose, projectId, milestoneId, onCreated }) => 
                           billable.milestones.length === 1 ? '' : 's'
                         } not billed`
                       )}
-                      {typeButton(
-                        'Time & Material',
-                        `${billable.unbilled_hours} approved hours not billed (${inr(billable.unbilled_amount)})${
-                          billable.unbilled_expenses
-                            ? ` + ${billable.unbilled_expenses} billable expense${
-                                billable.unbilled_expenses === 1 ? '' : 's'
-                              } (${inr(billable.unbilled_expense_amount)})`
-                            : ''
-                        }`
-                      )}
+                      {expensesOnly
+                        ? typeButton(
+                            'Time & Material',
+                            `Fixed Price: work is billed by milestone. ${billable.unbilled_expenses} billable expense${
+                              billable.unbilled_expenses === 1 ? '' : 's'
+                            } not billed (${inr(billable.unbilled_expense_amount)})`,
+                            'Billable Expenses'
+                          )
+                        : typeButton(
+                            'Time & Material',
+                            `${billable.unbilled_hours} approved hours not billed (${inr(billable.unbilled_amount)})${
+                              billable.unbilled_expenses
+                                ? ` + ${billable.unbilled_expenses} billable expense${
+                                    billable.unbilled_expenses === 1 ? '' : 's'
+                                  } (${inr(billable.unbilled_expense_amount)})`
+                                : ''
+                            }`
+                          )}
                     </div>
 
                     {form.invoice_type === 'Milestone' ? (
@@ -328,7 +348,8 @@ const InvoiceDrawer = ({ open, onClose, projectId, milestoneId, onCreated }) => 
                             <input
                               id='include_expenses'
                               type='checkbox'
-                              checked={form.include_expenses}
+                              checked={form.include_expenses || expensesOnly}
+                              disabled={expensesOnly}
                               onChange={e => setForm(prev => ({ ...prev, include_expenses: e.target.checked }))}
                               className='h-4 w-4 accent-[var(--theme-solid)]'
                             />
@@ -354,6 +375,12 @@ const InvoiceDrawer = ({ open, onClose, projectId, milestoneId, onCreated }) => 
                             GST applies to the invoice total.
                           </span>
                         </div>
+                        {billable.billed_at_cost_members?.length > 0 && (
+                          <span className='text-xs font-semibold text-amber-600 md:col-span-2' data-billed-at-cost>
+                            No billing rate for {billable.billed_at_cost_members.join(', ')}: their hours are billed at cost (no margin). Set a
+                            Billing Rate in Project &gt; Team first.
+                          </span>
+                        )}
                         {billable.unrated_members.length > 0 && (
                           <span className='text-xs font-semibold text-amber-600 md:col-span-2'>
                             No hourly rate for {billable.unrated_members.join(', ')} - set rates in Project &gt; Team
@@ -376,7 +403,7 @@ const InvoiceDrawer = ({ open, onClose, projectId, milestoneId, onCreated }) => 
                 <div className='space-y-1'>
                   <span className={ThemeStyles.formLabels}>GST %</span>
                   <select {...input('tax_pct')} className={ThemeStyles.formsInputsDropdown}>
-                    {(meta?.tax_rates || [0, 5, 12, 18, 28]).map(r => (
+                    {taxRates.map(r => (
                       <option key={r} value={r}>
                         {r}%
                       </option>
@@ -386,7 +413,7 @@ const InvoiceDrawer = ({ open, onClose, projectId, milestoneId, onCreated }) => 
                 <div className='space-y-1'>
                   <span className={ThemeStyles.formLabels}>Payment Terms</span>
                   <select {...input('payment_terms_days')} className={ThemeStyles.formsInputsDropdown}>
-                    {(meta?.payment_terms || [0, 7, 15, 30, 45, 60]).map(d => (
+                    {paymentTerms.map(d => (
                       <option key={d} value={d}>
                         {d === 0 ? 'Due on receipt' : `${d} days after issue`}
                       </option>

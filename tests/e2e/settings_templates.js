@@ -195,7 +195,9 @@ const nextMonday = (() => {
     check('Use opens Create Project from Template with the date hint', true)
     await br.setInput('#project_name', NEWP)
     await br.setInput('#start_date', d(14))
-    await br.evalJs(`${btn('Create Draft')}.click()`)
+    // Admin (this login) only has Submit, which approves at once; a budget is needed for that.
+    await br.setInput('#budget', '50000')
+    await br.evalJs(`${btn('Submit')}.click()`)
     await br.waitFor(`location.pathname.includes('projectDetails') && ${has(NEWP)}`, 'new project opened')
     check('the new project opens after it is created', true)
     const np = ((await api('GET', `/projects/list?search=${encodeURIComponent(NEWP)}&page_size=5`)).detail || [])[0]
@@ -225,7 +227,8 @@ const nextMonday = (() => {
     await br.setInput('[aria-label="Task 1 start day"]', '15')
     await br.setInput('[aria-label="Task 1 days"]', '10')
     await br.evalJs(`${btn('Save Template')}.click()`)
-    await br.waitFor(has('Ends after the project length (20 days)'), 'row error')
+    // Day 0 is the start date, so a 20-day plan ends on day 19.
+    await br.waitFor(has('Ends after the last day (day 19)'), 'row error')
     check('a task running past the template length is flagged on its row', true)
     await br.setInput('[aria-label="Task 1 days"]', '2')
     await br.evalJs(`${btn('Save Template')}.click()`)

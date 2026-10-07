@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
+import { useCan } from 'src/pms/access/useAccess'
 import { Tooltip } from '@mui/material'
 import { CalendarDays, ChevronLeft, ChevronRight, Inbox, Plus, User, X } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -121,7 +122,7 @@ const TaskTip = ({ t }) => (
   </div>
 )
 
-const TaskPill = ({ t, onOpen, onDragStart, saving }) => {
+const TaskPill = ({ t, onOpen, onDragStart, saving, canMove }) => {
   const done = t.status === 'Done'
 
   return (
@@ -131,7 +132,7 @@ const TaskPill = ({ t, onOpen, onDragStart, saving }) => {
         tabIndex={0}
         data-task={t.task_key}
         data-overdue={t.is_overdue ? 'true' : undefined}
-        draggable={!done && !saving}
+        draggable={canMove && !done && !saving}
         onDragStart={e => onDragStart(e, t)}
         onClick={e => {
           e.stopPropagation()
@@ -208,6 +209,7 @@ const TaskCard = ({ t, onOpen, note }) => (
 
 const TaskCalendar = () => {
   const router = useRouter()
+  const can = useCan()
   const { projectId, picker, ready } = useProjectPicker({ allowAll: true })
   const today = iso(new Date())
   const [view, setView] = useState('month')
@@ -495,6 +497,7 @@ const TaskCalendar = () => {
                             ? `${WEEKDAYS[(weekday + 6) % 7]} ${parse(day).getDate()}`
                             : parse(day).getDate()}
                         </span>
+                        {can('tasks', 'add') && (
                         <button
                           type='button'
                           onClick={e => {
@@ -507,6 +510,7 @@ const TaskCalendar = () => {
                         >
                           <Plus size={15} />
                         </button>
+                        )}
                       </div>
                       {ms.map(m => (
                         <MilestoneChip key={`m${m.id}`} m={m} onOpen={openMilestone} />
@@ -518,6 +522,7 @@ const TaskCalendar = () => {
                           onOpen={openTask}
                           onDragStart={onDragStart}
                           saving={savingId === t.id}
+                          canMove={can('planning', 'edit')}
                         />
                       ))}
                       {more > 0 && (
@@ -560,15 +565,17 @@ const TaskCalendar = () => {
                   </div>
                 </div>
                 <div className='flex items-center gap-1'>
-                  <button
-                    type='button'
-                    onClick={() => setDrawerDay(selected)}
-                    className='tc-muted inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-[var(--tc-hover)] hover:text-[var(--theme-solid)]'
-                    aria-label='Add task on this day'
-                    title='Add a task due this day'
-                  >
-                    <Plus size={16} />
-                  </button>
+                  {can('tasks', 'add') && (
+                    <button
+                      type='button'
+                      onClick={() => setDrawerDay(selected)}
+                      className='tc-muted inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-[var(--tc-hover)] hover:text-[var(--theme-solid)]'
+                      aria-label='Add task on this day'
+                      title='Add a task due this day'
+                    >
+                      <Plus size={16} />
+                    </button>
+                  )}
                   <button
                     type='button'
                     onClick={() => setSelected(null)}

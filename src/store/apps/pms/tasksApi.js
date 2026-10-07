@@ -3,10 +3,13 @@ import { pmsApi, pmsAuthQuery, PMS_BASE_URL } from './pmsApiBase'
 
 // A task belongs to a project, so every task change also refreshes that project's list row and
 // detail page (its task count, progress and overdue numbers come from its tasks).
-// The board, open Task Details pages (a parent lists its subtasks' status) and task history change
-// with every task change too.
+// The board, open Task Details pages (a parent lists its subtasks' status), dependency lists (they show
+// each linked task's status) and task history change with every task change too.
 const refreshProject = projectId => [
   'Dashboard',
+  // A status change can finish a main task or send a milestone for review (Settings > Automation).
+  'ApprovalInbox',
+  'AssigneeSuggestions',
   'Sprints',
   'Backlog',
   'Timeline',
@@ -15,10 +18,17 @@ const refreshProject = projectId => [
   'TaskList',
   'TaskBoard',
   'TaskDetail',
+  'TaskDependencies',
   'TaskActivity',
   'ProjectList',
   'ResourceAllocation',
   'Milestones',
+  // Hours on a task count in budget, billing and timesheets (a deleted task's hours drop out of them).
+  'ProjectBudget',
+  'BudgetOverview',
+  'Billable',
+  'TimeEntries',
+  'MyWeek',
   { type: 'ProjectDetail', id: Number(projectId) },
   { type: 'ProjectMembers', id: Number(projectId) }
 ]

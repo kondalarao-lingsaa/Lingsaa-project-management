@@ -75,7 +75,7 @@ const d = n => {
     allocation_pct: 10
   })
   await api('POST', `/projects/${project.id}/members`, {
-    member_name: 'Qa Manager',
+    member_name: 'Qa Manager', // linked to the login user, so the team shows its real name "QA Manager"
     user_id: 2,
     role: 'Team Lead',
     allocation_pct: 10
@@ -83,7 +83,7 @@ const d = n => {
   await api('POST', `/projects/${project.id}/members`, {
     member_name: 'Anita Rao',
     role: 'Developer',
-    allocation_pct: 10
+    allocation_pct: 0
   })
   // The manager gives dev a task -> dev's bell shows it.
   const task = (
@@ -126,19 +126,19 @@ const d = n => {
     await br.waitFor(`!!document.querySelector('#task_comment')`, 'comment box')
     await br.setInput('#task_comment', 'Thanks @Qa')
     await br.waitFor(
-      `!!document.querySelector('[data-mention-list]') && document.querySelector('[data-mention-list]').innerText.includes('Qa Manager')`,
+      `!!document.querySelector('[data-mention-list]') && document.querySelector('[data-mention-list]').innerText.includes('QA Manager')`,
       'suggestions'
     )
-    check('typing "@Qa" suggests the team member Qa Manager', true)
+    check('typing "@Qa" suggests the team member QA Manager', true)
     await br.evalJs(
-      `[...document.querySelectorAll('[data-mention-list] button')].find(b => b.innerText.includes('Qa Manager')).dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }))`
+      `[...document.querySelectorAll('[data-mention-list] button')].find(b => b.innerText.includes('QA Manager')).dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }))`
     )
-    await br.waitFor(`document.querySelector('#task_comment').value === 'Thanks @Qa Manager '`, 'inserted')
-    check('choosing it inserts "@Qa Manager "', true)
-    await br.setInput('#task_comment', 'Thanks @Qa Manager I will fix it today')
+    await br.waitFor(`document.querySelector('#task_comment').value === 'Thanks @QA Manager '`, 'inserted')
+    check('choosing it inserts "@QA Manager "', true)
+    await br.setInput('#task_comment', 'Thanks @QA Manager I will fix it today')
     await br.evalJs(`[...document.querySelectorAll('main button')].find(b => b.innerText.trim() === 'Comment').click()`)
     await br.waitFor(
-      `[...document.querySelectorAll('main li span')].some(s => s.innerText === '@Qa Manager')`,
+      `[...document.querySelectorAll('main li span')].some(s => s.innerText === '@QA Manager')`,
       'posted'
     )
     check('the posted comment shows the mention highlighted', true)

@@ -162,6 +162,9 @@ export const RoadmapView = () => {
 
 /* -------------------------------------------------------------------------------- WBS */
 
+// Hour sums are floats (1.1 + 2.2 = 3.3000000000000003): keep two decimals.
+const round2 = n => Math.round(n * 100) / 100
+
 const Hours = ({ est, act }) => (
   <span className={act > est && est ? 'font-semibold text-red-600' : ''}>
     {act ? act : 0} / {est ? est : 0} h
@@ -186,8 +189,8 @@ export const WbsView = () => {
     return byMilestone
       .map(g => {
         const all = g.tasks.flatMap(x => [x, ...x.subtasks])
-        const est = all.reduce((n, x) => n + (x.estimated_hours || 0), 0)
-        const act = all.reduce((n, x) => n + (x.actual_hours || 0), 0)
+        const est = round2(all.reduce((n, x) => n + (x.estimated_hours || 0), 0))
+        const act = round2(all.reduce((n, x) => n + (x.actual_hours || 0), 0))
         const progress = all.length ? Math.round(all.reduce((n, x) => n + x.progress, 0) / all.length) : 0
 
         return { ...g, est, act, progress, count: all.length }
@@ -195,7 +198,10 @@ export const WbsView = () => {
       .filter(g => g.id !== null || g.tasks.length)
   }, [t])
 
-  const totals = groups.reduce((acc, g) => ({ est: acc.est + g.est, act: acc.act + g.act, count: acc.count + g.count }), { est: 0, act: 0, count: 0 })
+  const totals = groups.reduce(
+    (acc, g) => ({ est: round2(acc.est + g.est), act: round2(acc.act + g.act), count: acc.count + g.count }),
+    { est: 0, act: 0, count: 0 }
+  )
 
   return (
     <PmsPage screenId='planning.wbs'>

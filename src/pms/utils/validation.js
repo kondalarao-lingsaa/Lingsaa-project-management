@@ -206,14 +206,16 @@ export const getMemberFieldError = (field, value, form = {}, project = {}) => {
     case 'allocation_pct':
       if (empty(t)) return 'Please Enter Allocation'
 
-      return ALLOCATION_REGEX.test(String(t)) && Number(t) >= 1 && Number(t) <= 100
+      // 0 = on the team, time not planned yet (backend MemberIn: 0 to 100).
+      return ALLOCATION_REGEX.test(String(t)) && Number(t) >= 0 && Number(t) <= 100
         ? null
-        : 'Allocation must be a whole number from 1 to 100'
+        : 'Allocation must be a whole number from 0 to 100'
     case 'email':
       return t && !EMAIL_REGEX.test(t) ? 'Enter a valid email address (e.g. name@example.com)' : null
     case 'hourly_rate':
-      return !empty(t) && !AMOUNT_REGEX.test(String(t))
-        ? 'Hourly rate must be a valid amount (up to 10 digits, up to 2 decimal places)'
+    case 'bill_rate':
+      return !empty(t) && (!AMOUNT_REGEX.test(String(t)) || Number(t) > 99999999.99)
+        ? 'Rate must be a valid amount (up to 8 digits, up to 2 decimal places)'
         : null
     case 'start_date':
       return t && project.start_date && t < project.start_date
@@ -236,6 +238,7 @@ export const MEMBER_VALIDATED_FIELDS = [
   'allocation_pct',
   'email',
   'hourly_rate',
+  'bill_rate',
   'start_date',
   'end_date'
 ]
@@ -356,6 +359,8 @@ export const ISSUE_VALIDATED_FIELDS = ['title', 'severity', 'due_date']
 export const SIGNED_AMOUNT_REGEX = /^-?\d{1,12}(\.\d{1,2})?$/
 export const SIGNED_DAYS_REGEX = /^-?\d{1,3}$/
 
+const noImpact = v => empty(v) || Number(v) === 0
+
 export const getChangeFieldError = (field, value, form = {}) => {
   const t = trimmed(value)
 
@@ -368,15 +373,16 @@ export const getChangeFieldError = (field, value, form = {}) => {
       return !t || t.length < 10 ? 'Please Enter the Reason for the change (at least 10 characters)' : null
     case 'cost_impact':
       if (!empty(t) && !SIGNED_AMOUNT_REGEX.test(String(t))) return 'Cost impact must be an amount, e.g. 15000 or -5000'
-      if (form.change_type === 'Cost' && empty(t) && empty(trimmed(form.days_impact)))
+      // 0 is no impact at all (the backend treats it as missing), so it counts as empty here too.
+      if (form.change_type === 'Cost' && noImpact(t) && noImpact(trimmed(form.days_impact)))
         return 'A Cost change needs a cost impact'
-      if (form.milestone_id && empty(t)) return 'Enter the cost impact to add to the milestone'
+      if (form.milestone_id && noImpact(t)) return 'Enter the cost impact to add to the milestone'
 
       return null
     case 'days_impact':
       if (!empty(t) && !SIGNED_DAYS_REGEX.test(String(t))) return 'Days impact must be a whole number, e.g. 10 or -5'
       if (!empty(t) && (Number(t) < -365 || Number(t) > 730)) return 'Days impact must be between -365 and 730'
-      if (form.change_type === 'Schedule' && empty(t) && empty(trimmed(form.cost_impact)))
+      if (form.change_type === 'Schedule' && noImpact(t) && noImpact(trimmed(form.cost_impact)))
         return 'A Schedule change needs a days impact'
 
       return null
@@ -456,10 +462,13 @@ export const getTemplateErrors = form => {
     if (key && names[key]) e[`m${i}.name`] = 'Two milestones have this name'
     names[key] = true
     put(`m${i}.due_offset`, dayNumber(m.due_offset, 'Due day'))
-    if (!e[`m${i}.due_offset`] && m.due_offset !== '' && length && Number(m.due_offset) > length)
-      e[`m${i}.due_offset`] = `After the project length (${length} days)`
+    // Day 0 is the start date, so a project of N days ends on day N-1 (same rule as the backend).
+    if (!e[`m${i}.due_offset`] && m.due_offset !== '' && length && Number(m.due_offset) > length - 1)
+      e[`m${i}.due_offset`] = `After the last day (day ${length - 1})`
     if (m.amount !== '' && (Number.isNaN(Number(m.amount)) || Number(m.amount) < 0))
       e[`m${i}.amount`] = 'Amount cannot be negative'
+    else if (m.amount !== '' && !MILESTONE_AMOUNT_REGEX.test(String(m.amount).trim()))
+      e[`m${i}.amount`] = 'Use at most 2 decimals, e.g. 150000.50'
   })
   form.tasks.forEach((t, i) => {
     put(`t${i}.title`, titleError(trimmed(t.title), 'Task name', true))
@@ -471,14 +480,16 @@ export const getTemplateErrors = form => {
       !e[`t${i}.duration_days`] &&
       t.start_offset !== '' &&
       length &&
-      Number(t.start_offset) + (Number(t.duration_days) || 1) - 1 > length
+      Number(t.start_offset) + (Number(t.duration_days) || 1) - 1 > length - 1
     )
-      e[`t${i}.duration_days`] = `Ends after the project length (${length} days)`
+      e[`t${i}.duration_days`] = `Ends after the last day (day ${length - 1})`
     if (
       t.estimated_hours !== '' &&
-      (Number.isNaN(Number(t.estimated_hours)) || Number(t.estimated_hours) < 0 || Number(t.estimated_hours) > 9999)
+      (Number.isNaN(Number(t.estimated_hours)) || Number(t.estimated_hours) < 0 || Number(t.estimated_hours) > 999.99)
     )
-      e[`t${i}.estimated_hours`] = 'Between 0 and 9999'
+      e[`t${i}.estimated_hours`] = 'Between 0 and 999.99'
+    else if (t.estimated_hours !== '' && !/^\d{1,3}(\.\d{1,2})?$/.test(String(t.estimated_hours).trim()))
+      e[`t${i}.estimated_hours`] = 'Use at most 2 decimals, e.g. 7.5'
   })
   if (!form.milestones.length && !form.tasks.length) e.plan = 'Add at least one task or milestone'
 

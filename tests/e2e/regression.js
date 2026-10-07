@@ -29,8 +29,9 @@ const ROOT = `${process.env.PMS_APP || 'http://127.0.0.1:3000'}/appModules/proje
     await b.goto(`${ROOT}/projects/allProjects/`)
     await b.waitFor(`document.querySelectorAll('tbody tr').length === 5`, 'first page')
     check('list shows 5 rows per page by default (same as Lingsaa_Accounts)', true)
-    await perPage(10)
-    await b.waitFor(has('PRJ-2026-0001'), 'projects list')
+    // 100 per page, so the demo projects stay on screen however many real projects were added since.
+    await perPage(100)
+    await b.waitFor(all(has('HR Portal Revamp'), `document.querySelectorAll('tbody tr').length > 5`), 'projects list')
     await search('mobile')
     await b.waitFor(all(has('Mobile Banking App'), no(has('HR Portal Revamp'))), 'search narrows')
     check('search box narrows the projects list', true)
@@ -52,7 +53,7 @@ const ROOT = `${process.env.PMS_APP || 'http://127.0.0.1:3000'}/appModules/proje
     const headers = await b.evalJs(`[...document.querySelectorAll('thead th')].map(t => t.innerText.trim())`)
     check('Custom menu hides the Manager column', !headers.includes('Manager') && headers.includes('Project'), headers.join('|'))
     await b.goto(`${ROOT}/projects/allProjects/`)
-    await b.waitFor(has('PRJ-2026-0007'), 'reloaded')
+    await b.waitFor(`document.querySelectorAll('tbody tr').length === 5`, 'reloaded')
     await b.sleep(500)
     const headers2 = await b.evalJs(`[...document.querySelectorAll('thead th')].map(t => t.innerText.trim())`)
     check('hidden column choice is remembered after a reload', !headers2.includes('Manager'), headers2.join('|'))
@@ -72,7 +73,10 @@ const ROOT = `${process.env.PMS_APP || 'http://127.0.0.1:3000'}/appModules/proje
     await b.setInput('#project_name', 'regression check project')
     await b.setInput('#customer_mobile', '9876543210')
     await b.setInput('#customer_email', 'qa@example.com')
-    await b.clickText('button', 'Create Draft')
+    // An Admin (this test's login) has one button, Submit: create and approve on their own authority.
+    check('Admin gets only Submit (no Create Draft / Create & Approve)',
+      await b.evalJs(`(() => { const t = [...document.querySelectorAll('button')].map(x => x.innerText.trim()); return t.includes('Submit') && !t.includes('Create Draft') && !t.includes('Create & Approve') })()`))
+    await b.clickText('button', 'Submit')
     await b.waitFor(all(has('Please Enter Client Name'), has('Please Select Start Date'), has('Please Select Project Type'), has('Please Enter Contact Person Name')), 'required errors')
     check('required Project Type, Client, Contact Person and Start Date are flagged on submit', true)
     await b.setInput('#customer_pan', 'abcdefghij')
@@ -86,28 +90,18 @@ const ROOT = `${process.env.PMS_APP || 'http://127.0.0.1:3000'}/appModules/proje
     await b.setInput('#project_type', 'Fixed Price')
     await b.setInput('#customer_contact_name', 'ravi kumar')
     await b.setInput('#start_date', '2026-10-01')
-    await b.clickText('button', 'Create Draft')
-    // A new project opens in Project Details (setup checklist) straight after it is created.
+    await b.clickText('button', 'Submit')
+    await b.waitFor(has('it is needed to approve the project'), 'approval gate')
+    check('Submit asks for End Date and Budget first (needed for approval)', true)
+    await b.setInput('#end_date', '2026-12-31'); await b.setInput('#budget', '250000')
+    await b.clickText('button', 'Submit')
+    // A new project opens in Project Details straight after it is created - already approved by the Admin.
     await b.waitFor(`location.pathname.includes('projectDetails') && ${has('Regression Check Project')} && ${no(has('Set up a new project'))}`, 'created', 20000)
     check('project created from the drawer (name auto-capitalised) and opened in Project Details', true)
-    await b.waitFor(all(has('Submit for Approval'), has('Project setup'), has('Next step: Fill in the project details')), 'details')
-    check('Project Details shows the setup checklist and the next step', true)
-    await b.clickText('button', 'Submit for Approval')
-    await b.waitFor(has('Add End Date and Budget before sending this project for approval'), 'approval gate')
-    check('approval is blocked until End Date and Budget are filled', true)
-    await b.clickText('button', 'Edit'); await b.waitFor(has('Update project information'), 'edit drawer'); await b.sleep(900)
-    await b.setInput('#end_date', '2026-12-31'); await b.setInput('#budget', '250000')
-    await b.clickText('button', 'Update'); await b.waitFor(no(has('Update project information')), 'updated', 20000)
-    await b.sleep(800)
-    await b.clickText('button', 'Submit for Approval'); await b.waitFor(has('Send Back to Draft'), 'pending')
-    // The page refreshes after Submit; retry the click until the project has moved on.
-    for (let i = 0; i < 10 && !(await b.evalJs(`[...document.querySelectorAll('button')].some(x => x.innerText.trim() === 'Activate')`)); i++) {
-      await b.evalJs(`[...document.querySelectorAll('button')].find(x => x.innerText.trim() === 'Approve' && !x.disabled)?.click(); true`)
-      await b.sleep(1200)
-    }
     await b.waitFor(`[...document.querySelectorAll('button')].some(x => x.innerText.trim() === 'Activate')`, 'approved')
+    check('Admin Submit: the project is Approved at once (own authority, ₹2,50,000)', true)
     await b.clickText('button', 'Activate'); await b.waitFor(all(has('Put On Hold'), has('Close Project')), 'active')
-    check('workflow: Draft -> Pending Approval -> Approved -> Active from the page', true)
+    check('workflow: Submit -> Approved -> Active from the page', true)
 
     // ---------- Tasks inside the project ----------
     await clickMain('Tasks')
@@ -145,7 +139,8 @@ const ROOT = `${process.env.PMS_APP || 'http://127.0.0.1:3000'}/appModules/proje
 
     // ---------- Tasks list toolbar ----------
     await b.goto(`${ROOT}/tasks/allTasks/`)
-    await b.waitFor(has('DEMO-'), 'tasks list')
+    // Any rows, not the demo task keys: real tasks added later push the demo ones off the first page.
+    await b.waitFor(`document.querySelectorAll('tbody tr').length > 0 && !document.body.innerText.includes('Loading')`, 'tasks list')
     await search('demo task 1')
     await b.waitFor(has('Demo task 1'), 'task search')
     await clickMain('Filters')

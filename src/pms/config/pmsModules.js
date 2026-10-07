@@ -66,8 +66,10 @@ export const PMS_MODULES = [
       { key: 'allTasks', title: 'All Tasks', permissionName: 'PMS All Tasks' },
       { key: 'taskDetails', title: 'Task Details', permissionName: 'PMS Task Details', hidden: true },
       { key: 'kanban', title: 'Kanban Board', permissionName: 'PMS Kanban Board' },
-      { key: 'backlog', title: 'Backlog', permissionName: 'PMS Backlog' },
-      { key: 'calendar', title: 'Task Calendar', permissionName: 'PMS Task Calendar' }
+      { key: 'backlog', title: 'Backlog', permissionName: 'PMS Backlog', perm: { group: 'sprints', action: 'view' } },
+      { key: 'calendar', title: 'Task Calendar', permissionName: 'PMS Task Calendar' },
+      // Tasks created again on a schedule (Settings > Automation > Create recurring tasks).
+      { key: 'recurring', title: 'Recurring Tasks', permissionName: 'PMS Recurring Tasks' }
     ]
   },
   {
@@ -163,7 +165,9 @@ export const PMS_MODULES = [
     screens: [
       { key: null, title: 'Settings', permissionName: 'PMS Settings', tabs: 'settings', tabLabel: 'Company Settings' },
       // Users, the permission matrix and approval rules: who may do what.
-      { key: 'access', title: 'Users & Access', permissionName: 'PMS Users & Access', hidden: true, tabs: 'settings', tabLabel: 'Users & Access' }
+      { key: 'access', title: 'Users & Access', permissionName: 'PMS Users & Access', hidden: true, tabs: 'settings', tabLabel: 'Users & Access' },
+      // Reminders, reports, invoices and routine updates the PMS does by itself.
+      { key: 'automation', title: 'Automation', permissionName: 'PMS Automation', hidden: true, tabs: 'settings', tabLabel: 'Automation' }
     ]
   }
 ]
@@ -191,6 +195,12 @@ export const PMS_SCREENS = PMS_MODULES.flatMap(group =>
 export const getScreen = id => PMS_SCREENS.find(s => s.id === id)
 
 export const getScreenByPermission = permissionName => PMS_SCREENS.find(s => s.permissionName === permissionName)
+
+export const getScreenByPath = path => PMS_SCREENS.find(s => s.path === path)
+
+// Whether a role's permissions ({ group: [actions] }) open a screen.
+export const screenAllowed = (permissions, screen) =>
+  !screen || Boolean(permissions?.[screen.perm.group]?.includes(screen.perm.action))
 
 // The tab row for a screen: every screen of the same group with the same `tabs` key, in config order.
 export const getScreenTabs = id => {

@@ -9,6 +9,7 @@ import PmsPagination from 'src/pms/components/PmsPagination'
 import ConfirmDialog from 'src/pms/components/ConfirmDialog'
 import { Chip, formatDate, GhostButton, inr, PrimaryButton } from 'src/pms/components/ui'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { useCan } from 'src/pms/access/useAccess'
 import { useChangeInvoiceStatusMutation, useGetInvoiceQuery, useGetInvoicesQuery } from 'src/store/apps/pms/billingApi'
 import InvoiceDrawer from './InvoiceDrawer'
 
@@ -33,6 +34,8 @@ const useDebouncedValue = (value, delay = 500) => {
 
 // The invoice itself, with its actions. The printable area is the white "paper" block.
 const InvoiceDialog = ({ invoiceId, onClose }) => {
+  const can = useCan()
+  const decides = can('billing', 'approve') // issuing, recording payment and cancelling are Finance's decisions
   const { data, isFetching } = useGetInvoiceQuery(invoiceId, { skip: !invoiceId })
   const [changeStatus, { isLoading }] = useChangeInvoiceStatusMutation()
   const [confirm, setConfirm] = useState(null) // 'issue' | 'cancel'
@@ -84,17 +87,17 @@ const InvoiceDialog = ({ invoiceId, onClose }) => {
               <Chip tone={INVOICE_TONE[inv.status]}>{inv.status}</Chip>
               {inv.is_overdue && <Chip tone='red'>Overdue</Chip>}
               <div className='ms-auto flex flex-wrap gap-2'>
-                {inv.status === 'Draft' && (
+                {decides && inv.status === 'Draft' && (
                   <PrimaryButton onClick={() => setConfirm('issue')} disabled={isLoading}>
                     <Icon icon='tabler:send' width={16} /> Issue
                   </PrimaryButton>
                 )}
-                {inv.status === 'Issued' && !paying && (
+                {decides && inv.status === 'Issued' && !paying && (
                   <PrimaryButton onClick={() => setPaying(true)} disabled={isLoading}>
                     <Icon icon='tabler:cash' width={16} /> Mark Paid
                   </PrimaryButton>
                 )}
-                {['Draft', 'Issued'].includes(inv.status) && (
+                {decides && ['Draft', 'Issued'].includes(inv.status) && (
                   <GhostButton onClick={() => setConfirm('cancel')} disabled={isLoading}>
                     Cancel Invoice
                   </GhostButton>
@@ -206,6 +209,7 @@ const InvoiceDialog = ({ invoiceId, onClose }) => {
 }
 
 const BillingView = () => {
+  const can = useCan()
   const [pagination, setPagination] = useState({ currentPage: 1, itemsPerPage: 5 })
   const [filters, setFilters] = useState({ status: '', invoiceType: '' })
   const [searchInput, setSearchInput] = useState('')
@@ -224,9 +228,11 @@ const BillingView = () => {
     <PmsPage
       screenId='billing'
       actions={
-        <PrimaryButton onClick={() => setDrawerOpen(true)}>
-          Create Invoice <PlusCircle size={16} />
-        </PrimaryButton>
+        can('billing', 'add') && (
+          <PrimaryButton onClick={() => setDrawerOpen(true)}>
+            Create Invoice <PlusCircle size={16} />
+          </PrimaryButton>
+        )
       }
     >
       <InvoiceDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onCreated={inv => inv && setOpenId(inv.id)} />

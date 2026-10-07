@@ -13,6 +13,7 @@ import { projectDetailsPath } from 'src/pms/projects/ProjectsListView'
 import { taskDetailsPath } from 'src/pms/tasks/paths'
 import { capitalizeFirst } from 'src/pms/utils/validation'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { useCan, useMe } from 'src/pms/access/useAccess'
 import {
   useChangeIssueStatusMutation,
   useChangeRiskStatusMutation,
@@ -200,7 +201,7 @@ const RiskMatrix = ({ matrix }) => (
   </div>
 )
 
-const RisksPanel = ({ project, canEdit }) => {
+const RisksPanel = ({ project, rights }) => {
   const [search, setSearch] = useState('')
   const [level, setLevel] = useState('')
   const debounced = useDebouncedValue(search)
@@ -340,7 +341,7 @@ const RisksPanel = ({ project, canEdit }) => {
             </select>
           }
           action={
-            canEdit && (
+            rights.add && (
               <PrimaryButton onClick={() => (project ? setDrawer({ project, risk: null }) : setChooser(true))}>
                 Add Risk <PlusCircle size={16} />
               </PrimaryButton>
@@ -408,26 +409,26 @@ const RisksPanel = ({ project, canEdit }) => {
                       {r.review_date ? formatDate(r.review_date) : '-'}
                     </td>
                     <td className='px-3 py-2 text-center'>
-                      {canEdit && r.project_status !== 'Closed' ? (
+                      {(rights.edit || rights.delete) && r.project_status !== 'Closed' ? (
                         <RowMenu
                           items={[
-                            r.status !== 'Closed' && {
+                            rights.edit && r.status !== 'Closed' && {
                               label: 'Edit',
                               icon: 'tabler:pencil',
                               onClick: () => setDrawer({ project: projectRef(project, r), risk: r })
                             },
-                            ['Open', 'Monitoring', 'Mitigated'].includes(r.status) && {
+                            rights.edit && ['Open', 'Monitoring', 'Mitigated'].includes(r.status) && {
                               label: 'It Happened',
                               icon: 'tabler:bolt',
                               onClick: () => setHappened(r)
                             },
-                            ...r.next_statuses.map(s => ({
+                            ...(rights.edit ? r.next_statuses : []).map(s => ({
                               label: RISK_ACTION[s] || s,
                               icon: 'tabler:arrows-exchange',
                               onClick: () =>
                                 run(changeStatus, { projectId: r.project_id, id: r.id, status: s }, `Moved to ${s}`)
                             })),
-                            !r.issue_count && {
+                            rights.delete && !r.issue_count && {
                               label: 'Delete',
                               icon: 'tabler:trash',
                               danger: true,
@@ -453,7 +454,7 @@ const RisksPanel = ({ project, canEdit }) => {
 
 /* ------------------------------------------------------------------------------ issues */
 
-const IssuesPanel = ({ project, canEdit }) => {
+const IssuesPanel = ({ project, rights }) => {
   const [search, setSearch] = useState('')
   const [severity, setSeverity] = useState('')
   const debounced = useDebouncedValue(search)
@@ -589,7 +590,7 @@ const IssuesPanel = ({ project, canEdit }) => {
             </select>
           }
           action={
-            canEdit && (
+            rights.add && (
               <PrimaryButton onClick={() => (project ? setDrawer({ project, issue: null }) : setChooser(true))}>
                 Raise Issue <PlusCircle size={16} />
               </PrimaryButton>
@@ -648,12 +649,12 @@ const IssuesPanel = ({ project, canEdit }) => {
                       {i.due_date ? formatDate(i.due_date) : '-'}
                     </td>
                     <td className='px-3 py-2'>
-                      {i.task_id ? (
+                      {i.task_id && i.task_key ? (
                         <Link href={taskDetailsPath(i.task_id)} className='hover:underline'>
                           <span className={`${ThemeStyles.listNoColor} text-[13px]`}>{i.task_key}</span>
                           <div className='text-xs text-gray-500'>{i.task_status}</div>
                         </Link>
-                      ) : canEdit && i.project_status !== 'Closed' && ['Open', 'In Progress'].includes(i.status) ? (
+                      ) : rights.fixTask && i.project_status !== 'Closed' && ['Open', 'In Progress'].includes(i.status) ? (
                         <GhostButton
                           onClick={() => run(createTask, { projectId: i.project_id, id: i.id }, 'Fix task created')}
                           disabled={isCreatingTask}
@@ -666,15 +667,15 @@ const IssuesPanel = ({ project, canEdit }) => {
                       )}
                     </td>
                     <td className='px-3 py-2 text-center'>
-                      {canEdit && i.project_status !== 'Closed' ? (
+                      {(rights.edit || rights.delete) && i.project_status !== 'Closed' ? (
                         <RowMenu
                           items={[
-                            i.status !== 'Closed' && {
+                            rights.edit && i.status !== 'Closed' && {
                               label: 'Edit',
                               icon: 'tabler:pencil',
                               onClick: () => setDrawer({ project: projectRef(project, i), issue: i })
                             },
-                            ...i.next_statuses.map(s => ({
+                            ...(rights.edit ? i.next_statuses : []).map(s => ({
                               label: ISSUE_ACTION[s] || s,
                               icon: s === 'Resolved' ? 'tabler:circle-check' : 'tabler:arrows-exchange',
                               onClick: () =>
@@ -682,7 +683,7 @@ const IssuesPanel = ({ project, canEdit }) => {
                                   ? setResolving(i)
                                   : run(changeStatus, { projectId: i.project_id, id: i.id, status: s }, `Moved to ${s}`)
                             })),
-                            { label: 'Delete', icon: 'tabler:trash', danger: true, onClick: () => setDeleting(i) }
+                            rights.delete && { label: 'Delete', icon: 'tabler:trash', danger: true, onClick: () => setDeleting(i) }
                           ]}
                         />
                       ) : (
@@ -703,7 +704,7 @@ const IssuesPanel = ({ project, canEdit }) => {
 
 /* ---------------------------------------------------------------------- change requests */
 
-const ChangesPanel = ({ project, canEdit }) => {
+const ChangesPanel = ({ project, rights }) => {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
   const debounced = useDebouncedValue(search)
@@ -845,7 +846,7 @@ const ChangesPanel = ({ project, canEdit }) => {
             </select>
           }
           action={
-            canEdit && (
+            rights.add && (
               <PrimaryButton onClick={() => (project ? setDrawer({ project, change: null }) : setChooser(true))}>
                 New Change Request <PlusCircle size={16} />
               </PrimaryButton>
@@ -928,25 +929,25 @@ const ChangesPanel = ({ project, canEdit }) => {
                       )}
                     </td>
                     <td className='px-3 py-2 text-center'>
-                      {canEdit && c.project_status !== 'Closed' && c.status === 'Submitted' ? (
+                      {c.project_status !== 'Closed' && c.status === 'Submitted' && ((rights.approve && !rights.isOwn(c)) || rights.isOwn(c)) ? (
                         <RowMenu
                           items={[
-                            {
+                            rights.approve && !rights.isOwn(c) && {
                               label: 'Approve',
                               icon: 'tabler:circle-check',
                               onClick: () => setDeciding({ change: c, approve: true })
                             },
-                            {
+                            rights.approve && !rights.isOwn(c) && {
                               label: 'Reject',
                               icon: 'tabler:circle-x',
                               onClick: () => setDeciding({ change: c, approve: false })
                             },
-                            {
+                            rights.isOwn(c) && {
                               label: 'Edit',
                               icon: 'tabler:pencil',
                               onClick: () => setDrawer({ project: projectRef(project, c), change: c })
                             },
-                            { label: 'Withdraw', icon: 'tabler:trash', danger: true, onClick: () => setWithdrawing(c) }
+                            rights.isOwn(c) && { label: 'Withdraw', icon: 'tabler:trash', danger: true, onClick: () => setWithdrawing(c) }
                           ]}
                         />
                       ) : (
@@ -967,10 +968,28 @@ const ChangesPanel = ({ project, canEdit }) => {
 
 // mode: 'risks' | 'issues' | 'changes'. With `project`: that project's register (Project Details > Risks);
 // without: every project (Risks & Issues screens in the sidebar).
-const RisksWorkspace = ({ mode, project, canEdit = true }) => {
-  const Panel = mode === 'issues' ? IssuesPanel : mode === 'changes' ? ChangesPanel : RisksPanel
+// What the signed-in person may do here: each button follows the exact right the server checks.
+const useRiskRights = project => {
+  const can = useCan()
+  const { me } = useMe()
+  const open = !project || project.status !== 'Closed'
 
-  return <Panel project={project} canEdit={canEdit && (!project || project.status !== 'Closed')} />
+  return {
+    add: open && can('risks', 'add'),
+    edit: open && can('risks', 'edit'),
+    delete: open && can('risks', 'delete'),
+    approve: open && can('risks', 'approve'),
+    fixTask: open && can('tasks', 'add'),
+    // A change request is edited or withdrawn only by the person who raised it, and never approved by them.
+    isOwn: c => open && Boolean(me?.user_id) && c.raised_by === me.user_id
+  }
+}
+
+const RisksWorkspace = ({ mode, project }) => {
+  const Panel = mode === 'issues' ? IssuesPanel : mode === 'changes' ? ChangesPanel : RisksPanel
+  const rights = useRiskRights(project)
+
+  return <Panel project={project} rights={rights} />
 }
 
 export default RisksWorkspace

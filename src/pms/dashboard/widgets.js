@@ -54,41 +54,71 @@ export const KpiCards = ({ s }) => (
       value={s.healthCounts['At Risk'] + s.healthCounts.Delayed}
       hint={`${s.healthCounts.Delayed} delayed, ${s.healthCounts['At Risk']} at risk`}
     />
-    <StatCard
-      icon='tabler:alarm'
-      tone='red'
-      label='Delayed Tasks'
-      value={s.delayedTasks.length}
-      hint='past due date, not done'
-    />
-    <StatCard
-      icon='tabler:coin'
-      tone='violet'
-      label='Budget Used'
-      value={`${s.budgetUsedPct}%`}
-      hint={`${inr(s.budgetActual)} of ${inr(s.budgetPlanned)}`}
-    />
-    <StatCard
-      icon='tabler:shield-exclamation'
-      tone='orange'
-      label='High Risks'
-      value={s.riskCounts.High}
-      hint={`${s.openIssues} open issues`}
-    />
-    <StatCard
-      icon='tabler:file-invoice'
-      tone='cyan'
-      label='Outstanding'
-      value={inr(s.billing.outstanding)}
-      hint={s.billing.overdue ? `${s.billing.overdue} invoices overdue` : 'issued, not paid yet'}
-    />
-    <StatCard
-      icon='tabler:users-group'
-      tone='amber'
-      label='Team Members'
-      value={s.teamSize}
-      hint={`${s.timesheets.pending} timesheets to approve`}
-    />
+    {s.delayedTasks && (
+      <StatCard
+        icon='tabler:alarm'
+        tone='red'
+        label='Delayed Tasks'
+        value={s.delayedTasks.length}
+        hint='past due date, not done'
+      />
+    )}
+    {s.budgetPlanned !== null ? (
+      <StatCard
+        icon='tabler:coin'
+        tone='violet'
+        label='Budget Used'
+        value={`${s.budgetUsedPct}%`}
+        hint={`${inr(s.budgetActual)} of ${inr(s.budgetPlanned)}`}
+      />
+    ) : (
+      s.milestones && (
+        <StatCard
+          icon='tabler:flag'
+          tone='violet'
+          label='Milestones Open'
+          value={s.milestones.filter(m => m.status !== 'Accepted').length}
+          hint={`${s.milestones.filter(m => m.isOverdue).length} overdue`}
+        />
+      )
+    )}
+    {s.riskCounts && (
+      <StatCard
+        icon='tabler:shield-exclamation'
+        tone='orange'
+        label='High Risks'
+        value={s.riskCounts.High}
+        hint={`${s.openIssues} open issues`}
+      />
+    )}
+    {s.billing ? (
+      <StatCard
+        icon='tabler:file-invoice'
+        tone='cyan'
+        label='Outstanding'
+        value={inr(s.billing.outstanding)}
+        hint={s.billing.overdue ? `${s.billing.overdue} invoices overdue` : 'issued, not paid yet'}
+      />
+    ) : (
+      s.deliverables && (
+        <StatCard
+          icon='tabler:package'
+          tone='cyan'
+          label='Deliverables Open'
+          value={s.deliverables.length}
+          hint='still to be delivered'
+        />
+      )
+    )}
+    {s.teamSize !== null && (
+      <StatCard
+        icon='tabler:users-group'
+        tone='amber'
+        label='Team Members'
+        value={s.teamSize}
+        hint={s.timesheets ? `${s.timesheets.pending} timesheets to approve` : 'on these projects'}
+      />
+    )}
   </div>
 )
 
@@ -471,54 +501,58 @@ export const TeamWorkload = ({ s }) => (
     subtitle="Share of each person's time on active projects"
     link={SECTION_LINKS.resources}
   >
-    <div className='flex flex-col gap-3'>
-      {s.team.map(m => {
-        const color = m.allocated >= 100 ? '#ef4444' : m.allocated >= 80 ? '#f59e0b' : '#22c55e'
+    {s.team && (
+      <div className='flex flex-col gap-3'>
+        {s.team.map(m => {
+          const color = m.allocated >= 100 ? '#ef4444' : m.allocated >= 80 ? '#f59e0b' : '#22c55e'
 
-        return (
-          <div key={m.id}>
-            <div className='mb-1 flex items-center justify-between'>
-              <div className='min-w-0'>
-                <span className='text-[13px] font-semibold text-slate-800'>{m.name}</span>
-                <span className='ml-2 text-xs text-gray-500'>{m.role}</span>
+          return (
+            <div key={m.id}>
+              <div className='mb-1 flex items-center justify-between'>
+                <div className='min-w-0'>
+                  <span className='text-[13px] font-semibold text-slate-800'>{m.name}</span>
+                  <span className='ml-2 text-xs text-gray-500'>{m.role}</span>
+                </div>
+                <div className='flex items-center gap-2'>
+                  {m.allocated >= 100 && <Chip tone='red'>Full</Chip>}
+                  <span className='text-xs text-gray-500'>{m.openTasks} open</span>
+                  <span className='w-10 text-right text-[13px] font-semibold tabular-nums text-slate-800'>
+                    {m.allocated ? `${m.allocated}%` : '-'}
+                  </span>
+                </div>
               </div>
-              <div className='flex items-center gap-2'>
-                {m.allocated >= 100 && <Chip tone='red'>Full</Chip>}
-                <span className='text-xs text-gray-500'>{m.openTasks} open</span>
-                <span className='w-10 text-right text-[13px] font-semibold tabular-nums text-slate-800'>
-                  {m.allocated ? `${m.allocated}%` : '-'}
-                </span>
+              <div className='h-2 overflow-hidden rounded-full bg-gray-100'>
+                <div
+                  className='h-full rounded-full'
+                  style={{ width: `${Math.min(100, m.allocated)}%`, background: color }}
+                />
               </div>
             </div>
-            <div className='h-2 overflow-hidden rounded-full bg-gray-100'>
-              <div
-                className='h-full rounded-full'
-                style={{ width: `${Math.min(100, m.allocated)}%`, background: color }}
-              />
-            </div>
-          </div>
-        )
-      })}
-      {s.team.length === 0 && <Empty>No team members yet. Add them in Project Details &gt; Team.</Empty>}
-    </div>
+          )
+        })}
+        {s.team.length === 0 && <Empty>No team members yet. Add them in Project Details &gt; Team.</Empty>}
+      </div>
+    )}
 
-    <Link
-      href={SECTION_LINKS.approval.href}
-      className='mt-4 grid grid-cols-3 gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-center hover:opacity-90'
-    >
-      <div>
-        <div className='text-[17px] font-semibold tabular-nums text-slate-800'>{s.timesheets.hours}</div>
-        <div className='text-[11px] text-gray-500'>hrs logged this week</div>
-      </div>
-      <div>
-        <div className='text-[17px] font-semibold tabular-nums text-slate-800'>{s.timesheets.approvedPct}%</div>
-        <div className='text-[11px] text-gray-500'>of them approved</div>
-      </div>
-      <div>
-        <div className='text-[17px] font-semibold tabular-nums text-amber-600'>{s.timesheets.pending}</div>
-        <div className='text-[11px] text-gray-500'>timesheets to approve</div>
-      </div>
-    </Link>
+    {s.timesheets && (
+      <Link
+        href={SECTION_LINKS.approval.href}
+        className='mt-4 grid grid-cols-3 gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-center hover:opacity-90'
+      >
+        <div>
+          <div className='text-[17px] font-semibold tabular-nums text-slate-800'>{s.timesheets.hours}</div>
+          <div className='text-[11px] text-gray-500'>hrs logged this week</div>
+        </div>
+        <div>
+          <div className='text-[17px] font-semibold tabular-nums text-slate-800'>{s.timesheets.approvedPct}%</div>
+          <div className='text-[11px] text-gray-500'>of them approved</div>
+        </div>
+        <div>
+          <div className='text-[17px] font-semibold tabular-nums text-amber-600'>{s.timesheets.pending}</div>
+          <div className='text-[11px] text-gray-500'>timesheets to approve</div>
+        </div>
+      </Link>
+    )}
   </CardShell>
 )
 

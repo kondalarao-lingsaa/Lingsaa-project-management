@@ -24,6 +24,7 @@ import {
 import { useGetProjectMembersQuery } from 'src/store/apps/pms/teamApi'
 import { useGetProjectMilestonesQuery } from 'src/store/apps/pms/billingApi'
 import { useGetProjectSettingsQuery } from 'src/store/apps/pms/settingsApi'
+import { useGetAssigneeSuggestionsQuery } from 'src/store/apps/pms/automationApi'
 
 const EMPTY_FORM = {
   project_id: '',
@@ -100,6 +101,9 @@ const TaskDrawer = ({ open, onClose, taskId, projectId, parentTaskId, meta, mine
   const [errors, setErrors] = useState({})
   const [reporter, setReporter] = useState('')
 
+  // The loaded task's updated_at: the server refuses the save if the task changed meanwhile (no silent revert).
+  const [version, setVersion] = useState(null)
+
   const [loadDetail, { isFetching: isLoadingDetail }] = useLazyGetTaskDetailQuery()
   const [createTask, { isLoading: isCreating }] = useCreateTaskMutation()
   const [updateTask, { isLoading: isUpdating }] = useUpdateTaskMutation()
@@ -161,6 +165,25 @@ const TaskDrawer = ({ open, onClose, taskId, projectId, parentTaskId, meta, mine
   const [notInTeam, setNotInTeam] = useState(false)
   useEffect(() => setNotInTeam(false), [open, form.project_id])
   const currentMember = members.find(m => isMember(m, form.assignee_name, form.assignee_id))
+
+  // Who on the team has the most free time between the task's dates (across all their projects).
+  const validDate = v => /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined
+  const { data: suggestResp } = useGetAssigneeSuggestionsQuery(
+    {
+      projectId: form.project_id,
+      startDate: validDate(form.start_date),
+      dueDate: validDate(form.due_date),
+      hours: form.estimated_hours && Number(form.estimated_hours) > 0 ? Number(form.estimated_hours) : undefined
+    },
+    { skip: !open || !form.project_id || members.length < 2 }
+  )
+  const suggestions = (form.project_id ? suggestResp?.detail?.people || [] : [])
+    .filter(p => p.available_hours > 0 && !(currentMember && currentMember.id === p.member_id))
+    .slice(0, 3)
+  const pickSuggestion = p => {
+    setForm(prev => ({ ...prev, assignee_name: p.member_name, assignee_id: p.user_id ? String(p.user_id) : '' }))
+    setError('assignee_name', null)
+  }
   const findMe = () => {
     const { username, userId } = getAuthParams()
 
@@ -181,6 +204,7 @@ const TaskDrawer = ({ open, onClose, taskId, projectId, parentTaskId, meta, mine
     if (!open) return
     setErrors({})
     setReporter('')
+    setVersion(null)
     if (!isEdit) {
       const me = getAuthParams()
       setForm({
@@ -199,6 +223,7 @@ const TaskDrawer = ({ open, onClose, taskId, projectId, parentTaskId, meta, mine
         if (!resp?.detail) return
         setForm(toForm(resp.detail))
         setReporter(resp.detail.reporter_name || '')
+        setVersion(resp.detail.updated_at || null)
       })
       .catch(() => {})
   }, [open, taskId, isEdit, projectId, parentTaskId, mine, dueDate, loadDetail])
@@ -275,7 +300,7 @@ const TaskDrawer = ({ open, onClose, taskId, projectId, parentTaskId, meta, mine
     }
 
     try {
-      const body = toPayload(form)
+      const body = isEdit ? { ...toPayload(form), updated_at: version } : toPayload(form)
       const resp = isEdit ? await updateTask({ id: taskId, body }).unwrap() : await createTask(body).unwrap()
       toast.success(resp?.detail || (isEdit ? 'Task updated' : 'Task created'))
       // Explain why a task created on My Tasks is not in the list: it is someone else's (or nobody's).
@@ -628,6 +653,24 @@ const TaskDrawer = ({ open, onClose, taskId, projectId, parentTaskId, meta, mine
                             This project has no team yet. Add people in Project Details &gt; Team.
                           </span>
                         ))}
+                      {suggestions.length > 0 && (
+                        <div className='flex flex-wrap items-center gap-1.5 pt-1' data-assignee-suggestions>
+                          <span className='text-[11px] text-gray-500'>Most free time:</span>
+                          {suggestions.map(p => (
+                            <button
+                              key={p.member_id}
+                              type='button'
+                              onClick={() => pickSuggestion(p)}
+                              title={`${p.free_hours} h free of ${p.available_hours} h between ${suggestResp.detail.from} and ${suggestResp.detail.to}; ${p.open_tasks} open task(s)`}
+                              className={`cursor-pointer rounded-full border border-dashed px-2 py-0.5 text-[11px] font-semibold hover:border-[var(--theme-solid)] hover:text-[var(--theme-solid)] ${
+                                p.fits ? 'border-gray-300 text-slate-600' : 'border-amber-300 text-amber-700'
+                              }`}
+                            >
+                              {p.member_name} ({p.free_hours} h free)
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className='space-y-1'>

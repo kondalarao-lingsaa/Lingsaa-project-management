@@ -10,6 +10,7 @@ import { formatDate, PrimaryButton } from 'src/pms/components/ui'
 import ProjectDrawer from 'src/pms/projects/ProjectDrawer'
 import { projectDetailsPath } from 'src/pms/projects/ProjectsListView'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { useCan } from 'src/pms/access/useAccess'
 import { useGetProjectMetaQuery } from 'src/store/apps/pms/projectsApi'
 import { useDeleteTemplateMutation, useGetTemplatesQuery } from 'src/store/apps/pms/settingsApi'
 import TemplateEditorDrawer from './TemplateEditorDrawer'
@@ -27,6 +28,7 @@ const useDebouncedValue = (value, delay = 400) => {
 }
 
 const TemplatesView = () => {
+  const can = useCan()
   const router = useRouter()
   const [searchInput, setSearchInput] = useState('')
   const search = useDebouncedValue(searchInput)
@@ -189,6 +191,7 @@ const TemplatesView = () => {
                         >
                           Edit
                         </button>
+                        {can('projects', 'delete') && (
                         <button
                           type='button'
                           onClick={() => setDeletingRow(t)}
@@ -197,6 +200,7 @@ const TemplatesView = () => {
                         >
                           Delete
                         </button>
+                        )}
                       </div>
                     </td>
                   </tr>

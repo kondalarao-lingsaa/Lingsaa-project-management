@@ -9,7 +9,7 @@ import { useGetBudgetOverviewQuery } from 'src/store/apps/pms/timesheetsApi'
 import { HEALTH_TONE } from './ProjectBudgetTab'
 import usePagedRows from 'src/pms/components/usePagedRows'
 
-// Budget & Costs > Budget: every project's budget against the cost of its approved hours.
+// Budget & Costs > Budget: every project's budget against the cost of its approved hours and expenses.
 const BudgetOverviewView = () => {
   const { data, isFetching } = useGetBudgetOverviewQuery()
   // Search narrows the (paged) list, so a project is found without paging through every project.
@@ -34,14 +34,14 @@ const BudgetOverviewView = () => {
           tone='violet'
           label='Actual Cost'
           value={inr(sv.total_actual || 0)}
-          hint='approved hours x rate'
+          hint='approved hours + approved expenses'
         />
         <StatCard
           icon='tabler:hourglass'
           tone='amber'
           label='Waiting'
           value={inr(sv.total_pending || 0)}
-          hint='hours not approved yet'
+          hint='submitted hours + expenses, not approved yet'
         />
         <StatCard
           icon='tabler:alert-triangle'

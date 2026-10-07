@@ -7,10 +7,9 @@ import toast from 'react-hot-toast'
 import StatCard from 'src/pms/components/StatCard'
 import ConfirmDialog from 'src/pms/components/ConfirmDialog'
 import { Chip, formatDate, GhostButton, inr, PrimaryButton, ProgressBar } from 'src/pms/components/ui'
-import { usePmsPermissions } from 'src/pms/adapters/permissions'
-import { getScreen } from 'src/pms/config/pmsModules'
 import { capitalizeFirst } from 'src/pms/utils/validation'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { useCan } from 'src/pms/access/useAccess'
 import {
   useAddDeliverableMutation,
   useChangeMilestoneStatusMutation,
@@ -88,7 +87,7 @@ const FeedbackDialog = ({ milestone, onClose, onConfirm, busy }) => {
   )
 }
 
-const Deliverables = ({ project, milestone, canEdit, onAttach }) => {
+const Deliverables = ({ project, milestone, rights, onAttach }) => {
   const [addDeliverable, { isLoading }] = useAddDeliverableMutation()
   const [setDone] = useSetDeliverableDoneMutation()
   const [remove] = useDeleteDeliverableMutation()
@@ -96,7 +95,7 @@ const Deliverables = ({ project, milestone, canEdit, onAttach }) => {
   const [editing, setEditing] = useState(null) // { id, name } while renaming
   const [name, setName] = useState('')
   const [error, setError] = useState('')
-  const locked = milestone.status === 'Accepted' || !canEdit
+  const locked = milestone.status === 'Accepted' || !rights.edit
   const ids = { projectId: project.id, milestoneId: milestone.id }
 
   const add = async () => {
@@ -183,7 +182,7 @@ const Deliverables = ({ project, milestone, canEdit, onAttach }) => {
                 <Icon icon='tabler:pencil' width={15} />
               </button>
             )}
-            {canEdit && project.status !== 'Closed' && (
+            {rights.attach && (
               <button
                 type='button'
                 onClick={() => onAttach(d)}
@@ -194,7 +193,7 @@ const Deliverables = ({ project, milestone, canEdit, onAttach }) => {
                 <Icon icon='tabler:paperclip' width={15} />
               </button>
             )}
-            {!locked && (
+            {!locked && rights.delete && (
               <button
                 type='button'
                 onClick={() => remove({ ...ids, deliverableId: d.id })}
@@ -207,7 +206,7 @@ const Deliverables = ({ project, milestone, canEdit, onAttach }) => {
           </li>
         ))}
       </ul>
-      {!locked && (
+      {!locked && rights.add && (
         <div className='mt-2'>
           <div className='flex gap-2'>
             <input
@@ -236,8 +235,18 @@ const Deliverables = ({ project, milestone, canEdit, onAttach }) => {
 
 // Project Details > Milestones: checkpoints with their tasks, deliverables, client acceptance and invoice.
 const ProjectMilestonesTab = ({ project }) => {
-  const { userPermissions } = usePmsPermissions(getScreen('deliverables')?.permissionName)
-  const canEdit = Boolean(userPermissions?.edit) && project.status !== 'Closed'
+  const can = useCan()
+  const open = project.status !== 'Closed'
+  // Each button follows the exact right the server checks (add, edit, delete, accept for the client, invoice).
+  const rights = {
+    add: open && can('deliverables', 'add'),
+    edit: open && can('deliverables', 'edit'),
+    delete: open && can('deliverables', 'delete'),
+    approve: open && can('deliverables', 'approve'),
+    invoice: can('billing', 'add'),
+    attach: open && can('documents', 'add')
+  }
+  const canEdit = rights.add
   const billable = project.project_type !== 'Internal'
 
   const { data, isFetching } = useGetProjectMilestonesQuery(project.id)
@@ -395,7 +404,7 @@ const ProjectMilestonesTab = ({ project }) => {
                     </span>
                   </div>
                 </div>
-                {canEdit && m.status !== 'Accepted' && (
+                {(rights.edit || rights.delete) && m.status !== 'Accepted' && (
                   <Ellipsis
                     className={ThemeStyles.tableActionsIcon}
                     onClick={e => {
@@ -423,7 +432,7 @@ const ProjectMilestonesTab = ({ project }) => {
               <Deliverables
                 project={project}
                 milestone={m}
-                canEdit={canEdit}
+                rights={rights}
                 onAttach={d => setAttachTo({ milestone: m, deliverable: d })}
               />
 
@@ -446,15 +455,17 @@ const ProjectMilestonesTab = ({ project }) => {
                 ) : (
                   m.status === 'Accepted' &&
                   billable &&
-                  canEdit &&
+                  rights.invoice &&
                   m.amount > 0 && (
                     <PrimaryButton onClick={() => setInvoiceFor(m)} className='ms-auto'>
                       <Icon icon='tabler:receipt' width={16} /> Create Invoice
                     </PrimaryButton>
                   )
                 )}
-                {canEdit &&
-                  m.next_statuses.map((status, index) => {
+                {m.next_statuses
+                  // Accept / Request Changes are the client's decision (or an approver's for them); the rest is editing.
+                  .filter(status => (['Accepted', 'Changes Requested'].includes(status) ? rights.approve : rights.edit))
+                  .map((status, index) => {
                     const Button = index === 0 ? PrimaryButton : GhostButton
 
                     return (
@@ -478,6 +489,7 @@ const ProjectMilestonesTab = ({ project }) => {
       )}
 
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)} autoFocus={false}>
+        {rights.edit && (
         <MenuItem
           className={ThemeStyles.actionMenuItem}
           onClick={() => {
@@ -490,6 +502,8 @@ const ProjectMilestonesTab = ({ project }) => {
             Edit
           </div>
         </MenuItem>
+        )}
+        {rights.delete && (
         <MenuItem
           className={ThemeStyles.actionMenuItem}
           onClick={() => {
@@ -502,6 +516,7 @@ const ProjectMilestonesTab = ({ project }) => {
             Delete
           </div>
         </MenuItem>
+        )}
       </Menu>
     </div>
   )

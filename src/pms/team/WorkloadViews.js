@@ -290,7 +290,8 @@ export const CapacityView = () => {
         ]}
       />
       <p className='mt-1 text-[11px] text-gray-500'>
-        Cells show planned / available hours. Available = working days x 8 h x allocation %. Planned = remaining
+        Cells show planned / available hours. Available = working days x{' '}
+        {cap?.range?.hours_per_day ? `${cap.range.hours_per_day} h` : 'hours per day'} x allocation %. Planned = remaining
         estimate of each open task, spread over its working days up to the due date; overdue work counts in this week.
         Click a person to see the tasks.
       </p>
@@ -544,7 +545,8 @@ export const UtilizationView = () => {
         </table>
       </div>
       <p className='mt-2 text-[11px] text-gray-500'>
-        Utilization = approved timesheet hours / available hours (working days x 8 h x allocation %). Week cells show
+        Utilization = approved timesheet hours / available hours (working days x{' '}
+        {ut?.range?.hours_per_day ? `${ut.range.hours_per_day} h` : 'hours per day'} x allocation %). Week cells show
         approved hours; hover for details. Green 60-100% · amber 30-60% · grey under 30% · red over 100%.
       </p>
     </PmsPage>

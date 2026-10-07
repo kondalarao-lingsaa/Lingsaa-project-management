@@ -25,7 +25,8 @@ const api = async (method, url, body) => {
   const mk = async name => (await api('POST', '/projects/create', { project_name: name, project_type: 'Internal', start_date: '2026-10-01', project_manager_name: 'Qa Manager' })).data
   const p1 = await mk('Team E2e Alpha')
   const p2 = await mk('Team E2e Beta')
-  await api('POST', `/projects/${p2.id}/members`, { member_name: 'Anita Rao', role: 'Tester / QA', allocation_pct: 30 })
+  // A made-up person (no login, on no real project), so real projects' allocations never change the numbers below.
+  await api('POST', `/projects/${p2.id}/members`, { member_name: 'Kavya Nair', role: 'Tester / QA', allocation_pct: 30 })
 
   const br = await launch(path.join(SHOTS, 'chrome-team'), 1440, 1000)
   const has = t => `document.body.innerText.includes(${JSON.stringify(t)})`
@@ -49,41 +50,41 @@ const api = async (method, url, body) => {
     await br.waitFor(all(has('Please Enter Member Name'), has('Please Select Role'), has('Please Enter Allocation')), 'required errors')
     check('empty member form flags Member Name, Role and Allocation', true)
 
-    await br.setInput('#member_name', 'anita rao')
+    await br.setInput('#member_name', 'kavya nair')
     await setSelect('#role', 'Developer')
     await br.setInput('#allocation_pct', '80')
     await br.waitFor(has('30% used on'), 'other allocation hint')
     check('typing the name shows her time on other projects ("30% used ... 70% free")', (await br.text()).includes('70% free'))
     await clickBtn('Add Member')
-    await br.waitFor(has('Only 70% of Anita Rao'), 'over allocation')
+    await br.waitFor(has('Only 70% of Kavya Nair'), 'over allocation')
     check('allocating more than her free time is stopped at the field', true)
     await br.setInput('#allocation_pct', '60')
     await br.setInput('#hourly_rate', '800')
     await clickBtn('Add Member')
-    await br.waitFor(all(no(has('Add Team Member')), has('Anita Rao')), 'member added', 20000)
+    await br.waitFor(all(no(has('Add Team Member')), has('Kavya Nair')), 'member added', 20000)
     await br.sleep(800)
-    check('member added: name capitalised, 60% and rate shown', (await rowText('Anita Rao')).includes('60%') && (await rowText('Anita Rao')).includes('800'))
+    check('member added: name capitalised, 60% and rate shown', (await rowText('Kavya Nair')).includes('60%') && (await rowText('Kavya Nair')).includes('800'))
 
     // ---------- Task form uses the team ----------
     await br.goto(`${ROOT}/projects/projectDetails/?id=${p1.id}&tab=tasks`)
     await br.waitFor(has('This project has no tasks yet'), 'tasks tab')
     await br.evalJs(`[...document.querySelectorAll('main button')].find(e => e.innerText.trim().startsWith('Add Task')).click()`)
     await br.waitFor(has('Add work to a project'), 'task drawer')
-    await br.waitFor(`[...document.querySelectorAll('#assignee_name option')].some(o => o.text.startsWith('Anita Rao'))`, 'member options')
+    await br.waitFor(`[...document.querySelectorAll('#assignee_name option')].some(o => o.text.startsWith('Kavya Nair'))`, 'member options')
     const options = await br.evalJs(`[...document.querySelectorAll('#assignee_name option')].map(o => o.text)`)
-    check('"Assign to" is a dropdown of the team (Qa Manager, Anita Rao)', options.some(o => o.startsWith('Qa Manager')) && options.some(o => o.startsWith('Anita Rao - Developer')), options)
-    const anitaId = await br.evalJs(`[...document.querySelectorAll('#assignee_name option')].find(o => o.text.startsWith('Anita Rao')).value`)
-    await setSelect('#assignee_name', anitaId)
+    check('"Assign to" is a dropdown of the team (Qa Manager, Kavya Nair)', options.some(o => o.startsWith('Qa Manager')) && options.some(o => o.startsWith('Kavya Nair - Developer')), options)
+    const kavyaId = await br.evalJs(`[...document.querySelectorAll('#assignee_name option')].find(o => o.text.startsWith('Kavya Nair')).value`)
+    await setSelect('#assignee_name', kavyaId)
     await br.setInput('#title', 'build the login screen')
     await clickBtn('Submit')
     await br.waitFor(all(has('Build the login screen'), no(has('Add work to a project'))), 'task created', 20000)
-    check('task assigned to a team member', (await rowText('Build the login screen')).includes('Anita Rao'))
+    check('task assigned to a team member', (await rowText('Build the login screen')).includes('Kavya Nair'))
 
     await br.goto(`${ROOT}/projects/projectDetails/?id=${p1.id}&tab=team`)
     await br.waitFor(has('1 open'), 'member stats')
-    check('Team tab shows her open task', (await rowText('Anita Rao')).includes('1 open'))
+    check('Team tab shows her open task', (await rowText('Kavya Nair')).includes('1 open'))
 
-    await br.evalJs(`(() => { const tr = [...document.querySelectorAll('tbody tr')].find(r => r.innerText.includes('Anita Rao')); tr.querySelector('td:last-child svg').dispatchEvent(new MouseEvent('click', { bubbles: true })); return true })()`)
+    await br.evalJs(`(() => { const tr = [...document.querySelectorAll('tbody tr')].find(r => r.innerText.includes('Kavya Nair')); tr.querySelector('td:last-child svg').dispatchEvent(new MouseEvent('click', { bubbles: true })); return true })()`)
     await br.waitFor(has('Remove'), 'row menu')
     await br.clickText('li', 'Remove')
     await br.waitFor(has('Remove from team?'), 'confirm')
@@ -94,15 +95,15 @@ const api = async (method, url, body) => {
 
     // ---------- Resources ----------
     await br.goto(`${ROOT}/resources/team/`)
-    await br.waitFor(has('Anita Rao'), 'resources team')
-    await br.setInput('input[placeholder^="Search with Person"]', 'anita')
+    await br.waitFor(has('Kavya Nair'), 'resources team')
+    await br.setInput('input[placeholder^="Search with Person"]', 'kavya')
     await br.waitFor(all(has('90%'), no(has('Qa Manager'))), 'resources search')
-    const r = await rowText('Anita Rao')
+    const r = await rowText('Kavya Nair')
     check('Resources > Team: one person across 2 projects, 90% total, 10% free, "High"', r.includes('90%') && r.includes('10%') && r.includes('High') && r.includes(p1.project_code) && r.includes(p2.project_code), r)
 
     await br.goto(`${ROOT}/resources/allocation/`)
-    await br.waitFor(has('Anita Rao'), 'allocation matrix')
-    const m = await rowText('Anita Rao')
+    await br.waitFor(has('Kavya Nair'), 'allocation matrix')
+    const m = await rowText('Kavya Nair')
     check('Resources > Allocation grid: 60% + 30% = 90%', m.includes('60%') && m.includes('30%') && m.includes('90%'), m)
     await br.shot(`${SHOTS}/pms_allocation.png`)
 

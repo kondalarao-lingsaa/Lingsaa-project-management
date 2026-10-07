@@ -11,7 +11,7 @@ const url = (path, params = {}) => {
 // the budget, a milestone's amount or the end date.
 const afterRisk = ['Risks', 'Issues', 'Dashboard']
 const afterIssue = ['Issues', 'Risks', 'Dashboard', 'TaskList', 'TaskBoard', 'TaskDetail']
-const afterChange = ['ChangeRequests', 'Milestones', 'Billable', 'ProjectList', 'ProjectDetail', 'ProjectBudget', 'BudgetOverview', 'Dashboard', 'ApprovalInbox']
+const afterChange = ['ChangeRequests', 'Milestones', 'Billable', 'ProjectList', 'ProjectDetail', 'ProjectBudget', 'BudgetOverview', 'Dashboard', 'ApprovalInbox', 'Timeline', 'Roadmap']
 
 const listParams = p => ({ project_id: p.projectId, status: p.status, level: p.level, severity: p.severity, search: p.search })
 

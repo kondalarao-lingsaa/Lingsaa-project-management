@@ -22,6 +22,7 @@ import { getScreen, PMS_BASE } from 'src/pms/config/pmsModules'
 import { projectDetailsPath } from 'src/pms/projects/ProjectsListView'
 import { capitalizeFirst } from 'src/pms/utils/validation'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { useCan } from 'src/pms/access/useAccess'
 import { getAuthParams } from 'src/store/rtkQuery/baseQuery'
 import {
   useAddTaskCommentMutation,
@@ -96,7 +97,8 @@ const TaskLink = ({ task }) => (
 
 /* ----------------------------------------------------------------- comments */
 
-const CommentsTab = ({ task, canEdit }) => {
+// canDelete: the role may delete comments (own ones only; the server checks the author too).
+const CommentsTab = ({ task, canEdit, canDelete }) => {
   const { userId } = getAuthParams()
   const { data, isFetching } = useGetTaskCommentsQuery(task.id)
   const [addComment, { isLoading: isAdding }] = useAddTaskCommentMutation()
@@ -197,7 +199,7 @@ const CommentsTab = ({ task, canEdit }) => {
                   <span className='text-xs text-gray-500' title={c.created_at}>
                     {timeAgo(c.created_at)}
                   </span>
-                  {String(c.author_id) === String(userId) && (
+                  {canDelete && String(c.author_id) === String(userId) && (
                     <button
                       type='button'
                       onClick={() => setDeleteTarget(c)}
@@ -390,6 +392,7 @@ const TaskDetailsView = () => {
   const { userPermissions } = usePmsPermissions(screen?.permissionName)
   const canEdit = Boolean(userPermissions?.edit)
   const canDelete = Boolean(userPermissions?.delete)
+  const can = useCan()
   // Set while deleting, so the page does not reload the task it is removing.
   const [deleted, setDeleted] = useState(false)
 
@@ -605,7 +608,7 @@ const TaskDetailsView = () => {
                   : ''
               }`}
               action={
-                canEdit && (
+                can('tasks', 'add') && (
                   <button
                     type='button'
                     onClick={() => setDrawer({ parentTaskId: task.id })}
@@ -640,9 +643,11 @@ const TaskDetailsView = () => {
             </Card>
           )}
 
-          <Card title='Attachments'>
-            <DocumentsPanel compact project={{ id: task.project_id }} taskId={task.id} canEdit={canEdit} />
-          </Card>
+          {can('documents', 'view') && (
+            <Card title='Attachments'>
+              <DocumentsPanel compact project={{ id: task.project_id }} taskId={task.id} />
+            </Card>
+          )}
 
           <Card>
             <div className='mb-4 flex gap-1 overflow-x-auto border-b border-gray-200'>
@@ -666,8 +671,8 @@ const TaskDetailsView = () => {
                 </button>
               ))}
             </div>
-            {tab === 'comments' && <CommentsTab task={task} canEdit={canEdit} />}
-            {tab === 'dependencies' && <DependenciesTab task={task} canEdit={canEdit} />}
+            {tab === 'comments' && <CommentsTab task={task} canEdit={can('communication', 'add')} canDelete={can('communication', 'delete')} />}
+            {tab === 'dependencies' && <DependenciesTab task={task} canEdit={can('planning', 'edit')} />}
             {tab === 'history' && <HistoryTab task={task} />}
           </Card>
         </div>

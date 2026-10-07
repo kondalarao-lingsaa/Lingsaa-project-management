@@ -4,16 +4,18 @@ import { CalendarRange, UserPlus, Wallet } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { DrawerFooter, DrawerHeader } from 'src/pms/components/DrawerParts'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { useCan } from 'src/pms/access/useAccess'
 import { getAuthParams } from 'src/store/rtkQuery/baseQuery'
 import { collectErrors, decimalOnly, digitsOnly, getMemberFieldError, MEMBER_VALIDATED_FIELDS, noSpaces, personName } from 'src/pms/utils/validation'
 import { useAddProjectMemberMutation, useGetResourceAllocationQuery, useGetTeamMetaQuery, useUpdateProjectMemberMutation } from 'src/store/apps/pms/teamApi'
 
-const EMPTY_FORM = { member_name: '', user_id: '', role: '', allocation_pct: '', hourly_rate: '', email: '', start_date: '', end_date: '' }
+const EMPTY_FORM = { member_name: '', user_id: '', role: '', allocation_pct: '', hourly_rate: '', bill_rate: '', email: '', start_date: '', end_date: '' }
 
 const FORMATTERS = {
   member_name: personName,
   allocation_pct: v => digitsOnly(v).slice(0, 3),
   hourly_rate: v => decimalOnly(v, 2),
+  bill_rate: v => decimalOnly(v, 2),
   email: noSpaces
 }
 
@@ -26,16 +28,23 @@ const toPayload = form => ({
   role: form.role,
   allocation_pct: Number(form.allocation_pct),
   hourly_rate: form.hourly_rate === '' ? null : Number(form.hourly_rate),
+  bill_rate: form.bill_rate === '' ? null : Number(form.bill_rate),
   email: form.email.trim() || null,
   start_date: form.start_date || null,
   end_date: form.end_date || null
 })
+
+// 0% = on the team but not planned yet (how the project manager joins every team), so it can be saved as is.
+const memberFieldError = (field, value, form, project) =>
+  field === 'allocation_pct' && String(value).trim() === '0' ? null : getMemberFieldError(field, value, form, project)
 
 const Required = () => <span className='text-red-500'>*</span>
 
 // member: the row being edited (null = add). project: gives the id and the allowed date range.
 const MemberDrawer = ({ open, onClose, project, member }) => {
   const isEdit = Boolean(member)
+  // Rates are money: roles without Budget rights neither see nor send them (the server keeps the stored ones).
+  const seesRates = useCan()('budget', 'view')
   const [form, setForm] = useState(EMPTY_FORM)
   const [errors, setErrors] = useState({})
 
@@ -44,7 +53,12 @@ const MemberDrawer = ({ open, onClose, project, member }) => {
   const [addMember, { isLoading: isAdding }] = useAddProjectMemberMutation()
   const [updateMember, { isLoading: isUpdating }] = useUpdateProjectMemberMutation()
   const isSubmitting = isAdding || isUpdating
-  const roles = metaResp?.detail?.roles || []
+  // "Project Manager" is the project's own manager (set on the project), never picked here for someone else.
+  const roles = (metaResp?.detail?.roles || []).filter(r => r !== 'Project Manager' || member?.role === 'Project Manager')
+  // The company's login users: picking one links the member to that login (needed to log hours and approve).
+  const people = metaResp?.detail?.people || []
+  const findPerson = (name, email) =>
+    people.find(p => (email && (p.email || '').toLowerCase() === email.trim().toLowerCase()) || (name && p.name.toLowerCase() === name.trim().toLowerCase()))
 
   useEffect(() => {
     if (!open) return
@@ -57,10 +71,12 @@ const MemberDrawer = ({ open, onClose, project, member }) => {
     const name = form.member_name.trim().toLowerCase()
     if (!name) return null
     const person = (allocationResp?.detail || []).find(p => (form.user_id && String(p.user_id) === form.user_id) || p.member_name.toLowerCase() === name)
-    if (!person) return { used: 0, projects: [] }
+    if (!person) return { used: 0, projects: [], hidden: 0 }
     const projects = person.projects.filter(p => p.project_id !== project?.id)
+    // Time on projects this user cannot see still counts (the server sends it as other_allocation).
+    const hidden = person.other_allocation || 0
 
-    return { used: projects.reduce((sum, p) => sum + p.allocation_pct, 0), projects }
+    return { used: projects.reduce((sum, p) => sum + p.allocation_pct, 0) + hidden, projects, hidden }
   }, [allocationResp, form.member_name, form.user_id, project?.id])
   const free = elsewhere ? Math.max(0, 100 - elsewhere.used) : 100
 
@@ -77,14 +93,22 @@ const MemberDrawer = ({ open, onClose, project, member }) => {
   const handleChange = e => {
     const { id, value } = e.target
     const next = FORMATTERS[id] ? FORMATTERS[id](value) : value
-    // Typing another name means the linked login user no longer applies.
-    setForm(prev => ({ ...prev, [id]: next, ...(id === 'member_name' ? { user_id: '' } : {}) }))
+    // Typing another name means the linked login user no longer applies - unless the name (picked from the list)
+    // or the email is one of the company's login users, which links that login.
+    setForm(prev => {
+      const updated = { ...prev, [id]: next }
+      if (id !== 'member_name' && id !== 'email') return updated
+      const person = id === 'member_name' ? findPerson(next, '') : findPerson('', next)
+      if (person) return { ...updated, member_name: person.name, user_id: String(person.user_id), email: person.email || updated.email }
+
+      return id === 'member_name' ? { ...updated, user_id: '' } : updated
+    })
     setError(id, null)
   }
 
   const handleBlur = field => {
-    setError(field, getMemberFieldError(field, form[field], form, project))
-    if (field === 'start_date' && form.end_date) setError('end_date', getMemberFieldError('end_date', form.end_date, form, project))
+    setError(field, memberFieldError(field, form[field], form, project))
+    if (field === 'start_date' && form.end_date) setError('end_date', memberFieldError('end_date', form.end_date, form, project))
   }
 
   const addMe = () => {
@@ -98,7 +122,7 @@ const MemberDrawer = ({ open, onClose, project, member }) => {
 
   const handleSubmit = async () => {
     if (isSubmitting) return
-    const found = collectErrors(MEMBER_VALIDATED_FIELDS, (f, v, fm) => getMemberFieldError(f, v, fm, project), form)
+    const found = collectErrors(MEMBER_VALIDATED_FIELDS, (f, v, fm) => memberFieldError(f, v, fm, project), form)
     // Same limit the server enforces, checked early so the message appears next to the field.
     if (!found.allocation_pct && elsewhere && Number(form.allocation_pct) > free) {
       found.allocation_pct = `Only ${free}% of ${form.member_name.trim()}'s time is free (other projects use ${elsewhere.used}%)`
@@ -161,8 +185,25 @@ const MemberDrawer = ({ open, onClose, project, member }) => {
                       </button>
                     )}
                   </div>
-                  <input {...input('member_name')} type='text' maxLength={200} placeholder='e.g. Anita Rao' className={`${ThemeStyles.formsInputs}${errorBorder('member_name')}`} />
-                  {fieldError('member_name')}
+                  <input {...input('member_name')} type='text' maxLength={200} list='pms-people' autoComplete='off' placeholder='Start typing, then pick the person' className={`${ThemeStyles.formsInputs}${errorBorder('member_name')}`} />
+                  <datalist id='pms-people'>
+                    {people.map(p => (
+                      <option key={p.user_id} value={p.name}>
+                        {p.email || ''}
+                      </option>
+                    ))}
+                  </datalist>
+                  {fieldError('member_name') ||
+                    (form.member_name.trim() &&
+                      (form.user_id ? (
+                        <span className='block text-xs font-semibold text-green-600' data-login-link='linked'>
+                          Linked to their login{form.email ? ` (${form.email})` : ''}: they can log hours and see this project
+                        </span>
+                      ) : (
+                        <span className='block text-xs font-semibold text-amber-600' data-login-link='none'>
+                          Not linked to a login: pick the name from the list (or enter their login email). Without it they cannot log hours or approve
+                        </span>
+                      )))}
                 </div>
 
                 <div className='space-y-1'>
@@ -206,17 +247,29 @@ const MemberDrawer = ({ open, onClose, project, member }) => {
                         {loadingAllocation
                           ? 'Checking other projects...'
                           : elsewhere.used
-                            ? `${elsewhere.used}% used on ${elsewhere.projects.map(p => `${p.project_code} (${p.allocation_pct}%)`).join(', ')} - ${free}% free`
+                            ? `${elsewhere.used}% used on ${[
+                                ...elsewhere.projects.map(p => `${p.project_code} (${p.allocation_pct}%)`),
+                                ...(elsewhere.hidden ? [`other projects (${elsewhere.hidden}%)`] : [])
+                              ].join(', ')} - ${free}% free`
                             : 'Not on any other active project - 100% free'}
                       </span>
                     ))}
                 </div>
 
-                <div className='space-y-1'>
-                  <span className={ThemeStyles.formLabels}>Hourly Rate (₹)</span>
-                  <input {...input('hourly_rate')} type='text' inputMode='decimal' maxLength={13} placeholder='0.00' className={`${ThemeStyles.formsInputs}${errorBorder('hourly_rate')}`} />
-                  {fieldError('hourly_rate') || <span className='block text-xs text-gray-500'>Used later to cost timesheet hours</span>}
-                </div>
+                {seesRates && (
+                  <>
+                    <div className='space-y-1'>
+                      <span className={ThemeStyles.formLabels}>Cost Rate (₹/h)</span>
+                      <input {...input('hourly_rate')} type='text' inputMode='decimal' maxLength={11} placeholder='0.00' className={`${ThemeStyles.formsInputs}${errorBorder('hourly_rate')}`} />
+                      {fieldError('hourly_rate') || <span className='block text-xs text-gray-500'>What an hour costs the company (pay). Internal: clients never see it</span>}
+                    </div>
+                    <div className='space-y-1'>
+                      <span className={ThemeStyles.formLabels}>Billing Rate (₹/h)</span>
+                      <input {...input('bill_rate')} type='text' inputMode='decimal' maxLength={11} placeholder='0.00' className={`${ThemeStyles.formsInputs}${errorBorder('bill_rate')}`} />
+                      {fieldError('bill_rate') || <span className='block text-xs text-gray-500'>What the client pays per hour on Time &amp; Material invoices</span>}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

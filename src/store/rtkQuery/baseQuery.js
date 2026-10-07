@@ -26,13 +26,14 @@ export const buildQuery = params =>
     .map(([key, value]) => `${key}=${key === 'search' ? encodeURIComponent(value) : value}`)
     .join('&')
 
-const handleQueryError = error => {
+const handleQueryError = (error, method = 'GET') => {
   if (error.status === 'FETCH_ERROR') return toast.error('Cannot reach the PMS server. Is the backend running?')
   if (typeof error.status !== 'number') return toast.error('An unexpected error occurred.')
 
   const detail = error.data?.detail
 
-  if (error.status === 404) return
+  // A read that finds nothing is not an error here; a save on a deleted record is (it says why).
+  if (error.status === 404 && method === 'GET') return
   if (error.status === 401) {
     // The login has expired or is not valid any more: sign out and go to the login page once.
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
@@ -49,9 +50,12 @@ const handleQueryError = error => {
 const withErrorHandling = rawBaseQuery => async (args, api, extraOptions) => {
   const result = await rawBaseQuery(args, api, extraOptions)
   if (result.error) {
-    handleQueryError(result.error)
-    // "Not found" on a list means "no records" in this codebase, not a failure.
-    if (result.error.status === 404) return { data: null }
+    const method = typeof args === 'string' ? 'GET' : (args?.method || 'GET').toUpperCase()
+    // Background refreshes (the bell) stay quiet when the server is briefly unreachable.
+    if (!(result.error.status === 'FETCH_ERROR' && extraOptions?.quiet)) handleQueryError(result.error, method)
+    // "Not found" on a read means "no records" in this codebase, not a failure. A save that hits a deleted record
+    // stays an error, so the screen never says it was saved.
+    if (result.error.status === 404 && method === 'GET') return { data: null }
   }
 
   return result

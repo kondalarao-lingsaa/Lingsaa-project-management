@@ -11,6 +11,7 @@ import ConfirmDialog from 'src/pms/components/ConfirmDialog'
 import ListToolbar, { useHiddenColumns } from 'src/pms/components/ListToolbar'
 import { Chip, formatDate, inr, NameAvatar, PrimaryButton, PRIORITY_TONE, ProgressBar, StatusPill } from 'src/pms/components/ui'
 import { usePmsPermissions } from 'src/pms/adapters/permissions'
+import { runsProject, useMe } from 'src/pms/access/useAccess'
 import { getScreen, PMS_BASE } from 'src/pms/config/pmsModules'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
 import ProjectDrawer from './ProjectDrawer'
@@ -64,6 +65,14 @@ const ProjectsListView = ({ screenId, scope = 'all', subtitle }) => {
   const [selectedId, setSelectedId] = useState(null)
   const [anchorEl, setAnchorEl] = useState(null)
   const [menuRow, setMenuRow] = useState(null)
+  const { me } = useMe()
+
+  // Same rules as the project's details page (and the server): only whoever runs the project edits or deletes it;
+  // no edits while it waits for approval; after approval only an Admin deletes (others close it).
+  const runsRow = runsProject(me, menuRow)
+  const canEditRow = Boolean(userPermissions?.edit) && runsRow && !['Closed', 'Pending Approval'].includes(menuRow?.status)
+  const canDeleteRow =
+    Boolean(userPermissions?.delete) && runsRow && (['Draft', 'Pending Approval'].includes(menuRow?.status) || me?.role === 'admin')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [hiddenColumns, toggleColumn] = useHiddenColumns(`pms.columns.${screenId}`)
   const visibleColumns = COLUMNS.filter(col => col.fixed || !hiddenColumns.includes(col.key))
@@ -334,7 +343,7 @@ const ProjectsListView = ({ screenId, scope = 'all', subtitle }) => {
             View
           </div>
         </MenuItem>
-        {userPermissions?.edit && menuRow?.status !== 'Closed' && (
+        {canEditRow && (
           <MenuItem
             className={ThemeStyles.actionMenuItem}
             onClick={() => {
@@ -349,7 +358,7 @@ const ProjectsListView = ({ screenId, scope = 'all', subtitle }) => {
             </div>
           </MenuItem>
         )}
-        {userPermissions?.delete && (
+        {canDeleteRow && (
           <MenuItem
             className={ThemeStyles.actionMenuItem}
             onClick={() => {

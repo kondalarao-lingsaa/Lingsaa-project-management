@@ -23,6 +23,7 @@ import { Chip, formatDate, GhostButton, inr, PrimaryButton } from 'src/pms/compo
 import { projectDetailsPath } from 'src/pms/projects/ProjectsListView'
 import { capitalizeFirst } from 'src/pms/utils/validation'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { useCan } from 'src/pms/access/useAccess'
 import { getAuthParams } from 'src/store/rtkQuery/baseQuery'
 import {
   useApproveExpensesMutation,
@@ -114,6 +115,8 @@ const RejectDialog = ({ open, count, onClose, onConfirm, busy }) => {
 }
 
 export const ExpensesView = () => {
+  const can = useCan()
+  const mayApprove = can('expenses', 'approve')
   const { userId } = getAuthParams()
   const { projectId, picker, ready } = useProjectPicker({ allowAll: true })
   const [pagination, setPagination] = useState({ currentPage: 1, itemsPerPage: 5 })
@@ -155,7 +158,10 @@ export const ExpensesView = () => {
   const counts = sv.status_counts || {}
   const amounts = sv.status_amounts || {}
   const isOwn = e => String(e.spent_by) === String(userId)
-  const reviewable = rows.filter(e => e.status === 'Submitted' && !isOwn(e))
+  // Same rule as each row's checkbox (canReview below), so "select all" never picks one the server would refuse.
+  const reviewable = mayApprove
+    ? rows.filter(e => e.status === 'Submitted' && !isOwn(e) && e.can_approve !== false)
+    : []
   const selectedRows = rows.filter(e => selected.includes(e.id))
 
   useEffect(() => setPagination(p => ({ ...p, currentPage: 1 })), [projectId, status, category, mine, search])
@@ -176,9 +182,11 @@ export const ExpensesView = () => {
     <PmsPage
       screenId='budget.expenses'
       actions={
-        <PrimaryButton onClick={() => setDrawer({})}>
-          Add Expense <PlusCircle size={16} />
-        </PrimaryButton>
+        can('expenses', 'add') && (
+          <PrimaryButton onClick={() => setDrawer({})}>
+            Add Expense <PlusCircle size={16} />
+          </PrimaryButton>
+        )
       }
     >
       <ExpenseDrawer
@@ -325,14 +333,16 @@ export const ExpensesView = () => {
             <thead className={ThemeStyles.tableHeaderBg}>
               <tr>
                 <th className={`${ThemeStyles.tableHeadCellsHeight} w-10 !px-3`}>
-                  <input
-                    type='checkbox'
-                    aria-label='Select all waiting'
-                    disabled={!reviewable.length}
-                    checked={reviewable.length > 0 && reviewable.every(e => selected.includes(e.id))}
-                    onChange={e => setSelected(e.target.checked ? reviewable.map(r => r.id) : [])}
-                    className='h-4 w-4 accent-[var(--theme-solid)]'
-                  />
+                  {mayApprove && (
+                    <input
+                      type='checkbox'
+                      aria-label='Select all waiting'
+                      disabled={!reviewable.length}
+                      checked={reviewable.length > 0 && reviewable.every(e => selected.includes(e.id))}
+                      onChange={e => setSelected(e.target.checked ? reviewable.map(r => r.id) : [])}
+                      className='h-4 w-4 accent-[var(--theme-solid)]'
+                    />
+                  )}
                 </th>
                 <Th>Expense</Th>
                 <Th>Project</Th>
@@ -355,7 +365,8 @@ export const ExpensesView = () => {
               )}
               {rows.map(e => {
                 const own = isOwn(e)
-                const canReview = e.status === 'Submitted' && !own
+                // can_approve: the server's approval-limit check (a PM cannot approve above the expense limit).
+                const canReview = mayApprove && e.status === 'Submitted' && !own && e.can_approve !== false
                 const canEdit = own && (e.status === 'Draft' || e.status === 'Rejected')
 
                 return (
@@ -382,7 +393,8 @@ export const ExpensesView = () => {
                         {e.vendor ? `${e.vendor} · ` : ''}by {e.spent_by_name}
                         {e.milestone_name ? ` · ${e.milestone_name}` : ''}
                       </div>
-                      {e.receipt_document_id && (
+                      {/* Only a receipt that still exists (the name is empty once it was deleted from Documents). */}
+                      {e.receipt_document_id && e.receipt_file_name && (
                         <button
                           type='button'
                           onClick={() => downloadReceipt(e)}
@@ -554,8 +566,8 @@ export const ActualCostView = () => {
           icon='tabler:wallet'
           tone='emerald'
           label='Budget Used'
-          value={s.budget ? `${Math.round((s.total / s.budget) * 100)}%` : '-'}
-          hint={s.budget ? `of ${inr(s.budget)}` : 'no budgets set'}
+          value={s.budget ? `${Math.round(((s.budgeted_total ?? s.total) / s.budget) * 100)}%` : '-'}
+          hint={s.budget ? `of ${inr(s.budget)} (projects with a budget)` : 'no budgets set'}
         />
       </div>
 

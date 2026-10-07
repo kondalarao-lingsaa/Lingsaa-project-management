@@ -10,6 +10,7 @@ import { formatDate, GhostButton, inr, NameAvatar, PrimaryButton } from 'src/pms
 import { taskDetailsPath } from 'src/pms/tasks/paths'
 import { capitalizeFirst } from 'src/pms/utils/validation'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { useCan } from 'src/pms/access/useAccess'
 import { useGetProjectOptionsQuery } from 'src/store/apps/pms/projectsApi'
 import { useApproveEntriesMutation, useGetApprovalsQuery, useRejectEntriesMutation } from 'src/store/apps/pms/timesheetsApi'
 
@@ -76,10 +77,14 @@ const ApprovalView = () => {
   const [approve, { isLoading: isApproving }] = useApproveEntriesMutation()
   const [reject, { isLoading: isRejecting }] = useRejectEntriesMutation()
   const [rejectGroup, setRejectGroup] = useState(null)
+  // Pay rates and costs are money: the server sends them only to roles that see the budget.
+  const can = useCan()
+  const showMoney = can('budget', 'view')
+  const columns = showMoney ? ['Date', 'Task', 'Hours', 'Rate', 'Cost'] : ['Date', 'Task', 'Hours']
 
   const groups = data?.detail || []
   const projects = Array.isArray(projectsResp?.detail) ? projectsResp.detail : []
-  const totalCost = groups.reduce((sum, g) => sum + g.cost, 0)
+  const totalCost = groups.reduce((sum, g) => sum + (g.cost || 0), 0)
 
   const doApprove = async group => {
     try {
@@ -104,10 +109,10 @@ const ApprovalView = () => {
     <PmsPage screenId='timesheets.approval'>
       {rejectGroup && <RejectDialog group={rejectGroup} onClose={() => setRejectGroup(null)} onConfirm={doReject} busy={isRejecting} />}
 
-      <div className='mb-3 grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4'>
+      <div className={`mb-3 grid grid-cols-2 gap-3 md:gap-4 ${showMoney ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
         <StatCard icon='tabler:inbox' tone='amber' label='Waiting' value={groups.length} hint='person-weeks to review' />
         <StatCard icon='tabler:clock' tone='blue' label='Hours' value={data?.stack_values?.hours || 0} hint='submitted, not reviewed' />
-        <StatCard icon='tabler:coin-rupee' tone='violet' label='Cost if Approved' value={inr(totalCost)} hint='at current hourly rates' />
+        {showMoney && <StatCard icon='tabler:coin-rupee' tone='violet' label='Cost if Approved' value={inr(totalCost)} hint='at current hourly rates' />}
         <StatCard icon='tabler:users' tone='indigo' label='People' value={new Set(groups.map(g => g.member_name)).size} hint='waiting for you' />
       </div>
 
@@ -144,7 +149,7 @@ const ApprovalView = () => {
                 <div className='flex items-center gap-4 md:ms-auto'>
                   <div className='text-right'>
                     <div className='text-[15px] font-bold tabular-nums text-slate-800'>{g.hours} h</div>
-                    <div className='text-xs text-gray-500'>{inr(g.cost)}</div>
+                    {showMoney && <div className='text-xs text-gray-500'>{inr(g.cost || 0)}</div>}
                   </div>
                   {g.is_own ? (
                     <span className='max-w-[180px] text-xs font-medium text-amber-600'>Your own time - another manager must review it</span>
@@ -164,7 +169,7 @@ const ApprovalView = () => {
                 <table className='w-full min-w-[720px] text-left text-sm'>
                   <thead className={ThemeStyles.tableHeaderBg}>
                     <tr>
-                      {['Date', 'Task', 'Hours', 'Rate', 'Cost'].map(h => (
+                      {columns.map(h => (
                         <th key={h} className={`${ThemeStyles.tableHeadCellsHeight} !px-3`}>
                           <div className={`pms-th-text ${['Hours', 'Rate', 'Cost'].includes(h) ? 'text-right' : ''}`}>{h}</div>
                         </th>
@@ -183,8 +188,12 @@ const ApprovalView = () => {
                           {e.note && <div className='text-xs text-gray-500'>{e.note}</div>}
                         </td>
                         <td className='pms-td-text px-3 py-2 text-right font-semibold tabular-nums'>{e.hours}</td>
-                        <td className='pms-td-text px-3 py-2 text-right tabular-nums'>{e.hourly_rate === null ? <span className='text-amber-600'>No rate</span> : inr(e.hourly_rate)}</td>
-                        <td className='pms-td-text px-3 py-2 text-right tabular-nums'>{e.cost === null ? '-' : inr(e.cost)}</td>
+                        {showMoney && (
+                          <>
+                            <td className='pms-td-text px-3 py-2 text-right tabular-nums'>{e.hourly_rate === null ? <span className='text-amber-600'>No rate</span> : inr(e.hourly_rate)}</td>
+                            <td className='pms-td-text px-3 py-2 text-right tabular-nums'>{e.cost === null ? '-' : inr(e.cost)}</td>
+                          </>
+                        )}
                       </tr>
                     ))}
                   </tbody>

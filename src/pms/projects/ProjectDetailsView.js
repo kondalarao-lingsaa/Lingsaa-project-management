@@ -34,12 +34,13 @@ import ProjectDocumentsTab from 'src/pms/documents/ProjectDocumentsTab'
 import ProjectPlanningTab from 'src/pms/planning/ProjectPlanningTab'
 import ReasonDialog from 'src/pms/components/ReasonDialog'
 import MessageThread from 'src/pms/portal/MessageThread'
-import { useCan } from 'src/pms/access/useAccess'
+import { runsProject, useCan, useMe } from 'src/pms/access/useAccess'
 import { useGetClientMessagesQuery, useReplyToClientMutation } from 'src/store/apps/pms/accessApi'
 import ProjectApprovalCard from './ProjectApprovalCard'
 import {
   useChangeProjectStatusMutation,
   useDeleteProjectMutation,
+  useReopenProjectMutation,
   useGetProjectDetailQuery,
   useGetProjectMetaQuery
 } from 'src/store/apps/pms/projectsApi'
@@ -60,19 +61,27 @@ const ACTIONS = {
   Closed: { label: 'Close Project', icon: 'tabler:archive', confirm: true }
 }
 
+// Said in the confirmation, so nobody pauses or closes a project without knowing what it means.
+const MOVE_WARNING = {
+  'On Hold': 'No hours can be logged until it is activated again.',
+  Closed:
+    'Closing is final: no more tasks, hours, expenses or invoices can be added. Only an Admin or Director can reopen it.'
+}
+
 // Tabs in the order a project is set up and run: team first (tasks can only go to team members), then the
 // plan, the work, and money/risks/files. Every tab reuses that section's list filtered to this project.
 const TABS = [
+  // `needs`: the module right a role must have to see the tab (the tab reads that module's data).
   { key: 'overview', label: 'Overview', ready: true },
   { key: 'team', label: 'Team', ready: true },
-  { key: 'milestones', label: 'Milestones', ready: true },
-  { key: 'tasks', label: 'Tasks', ready: true },
-  { key: 'board', label: 'Board', ready: true },
-  { key: 'planning', label: 'Planning', ready: true },
-  { key: 'budget', label: 'Budget', ready: true },
-  { key: 'risks', label: 'Risks', ready: true },
-  { key: 'files', label: 'Files', ready: true },
-  { key: 'activity', label: 'Activity', ready: true },
+  { key: 'milestones', label: 'Milestones', ready: true, needs: ['deliverables', 'view'] },
+  { key: 'tasks', label: 'Tasks', ready: true, needs: ['tasks', 'view'] },
+  { key: 'board', label: 'Board', ready: true, needs: ['tasks', 'view'] },
+  { key: 'planning', label: 'Planning', ready: true, needs: ['planning', 'view'] },
+  { key: 'budget', label: 'Budget', ready: true, needs: ['budget', 'view'] },
+  { key: 'risks', label: 'Risks', ready: true, needs: ['risks', 'view'] },
+  { key: 'files', label: 'Files', ready: true, needs: ['documents', 'view'] },
+  { key: 'activity', label: 'Activity', ready: true, needs: ['tasks', 'view'] },
   // Messages with the client (they write from the client portal).
   { key: 'client', label: 'Client', ready: true, needs: ['communication', 'view'] }
 ]
@@ -156,13 +165,16 @@ const ProjectDetailsView = () => {
   const screen = getScreen(SCREEN_ID)
   const { userPermissions } = usePmsPermissions(screen?.permissionName)
   const can = useCan()
+  const { me } = useMe()
   const [askApproval, setAskApproval] = useState(null) // 'Approved' | 'Draft' (an approver sending it back)
 
   const { data: resp, isFetching, isUninitialized } = useGetProjectDetailQuery(id, { skip: !router.isReady || !id })
   const { data: metaResp } = useGetProjectMetaQuery()
   const [changeStatus, { isLoading: isChanging }] = useChangeProjectStatusMutation()
   const [deleteProject, { isLoading: isDeleting }] = useDeleteProjectMutation()
+  const [reopenProject, { isLoading: isReopening }] = useReopenProjectMutation()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [askReopen, setAskReopen] = useState(false)
 
   const [templateOpen, setTemplateOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -189,6 +201,17 @@ const ProjectDetailsView = () => {
     } finally {
       setPendingMove(null)
       setAskApproval(null)
+    }
+  }
+
+  const reopen = async reason => {
+    try {
+      const result = await reopenProject({ id, reason }).unwrap()
+      toast.success(result?.detail || 'Project reopened')
+    } catch {
+      // The shared base query already showed the error.
+    } finally {
+      setAskReopen(false)
     }
   }
 
@@ -233,8 +256,10 @@ const ProjectDetailsView = () => {
     )
   }
 
-  const canEdit = Boolean(userPermissions?.edit)
-  const canDelete = Boolean(userPermissions?.delete)
+  const runs = runsProject(me, project)
+  const canEdit = Boolean(userPermissions?.edit) && runs
+  // Approved work keeps its history: only an Admin deletes a project after approval (others close it).
+  const canDelete = Boolean(userPermissions?.delete) && runs && (['Draft', 'Pending Approval'].includes(project.status) || me?.role === 'admin')
   const isClosed = project.status === 'Closed'
   // The moves this person may make: Approve only for the approver of the current level; the rest need edit rights.
   const approval = project.approval || {}
@@ -245,12 +270,7 @@ const ProjectDetailsView = () => {
     return canEdit
   })
   const shown = { ...project, next_statuses: allowedMoves }
-  const tabs = TABS.filter(tab => {
-    if (tab.key === 'budget') return can('budget', 'view')
-    if (tab.needs) return can(...tab.needs)
-
-    return true
-  })
+  const tabs = TABS.filter(tab => !tab.needs || can(...tab.needs))
 
   const handleDelete = async () => {
     try {
@@ -283,7 +303,8 @@ const ProjectDetailsView = () => {
                 </GhostButton>
               </>
             )}
-            {canEdit && !isClosed && (
+            {/* The server refuses changes while the project waits for approval (send it back to Draft first). */}
+            {canEdit && !isClosed && project.status !== 'Pending Approval' && (
               <GhostButton onClick={() => setDrawerOpen(true)}>
                 <Edit size={16} /> Edit
               </GhostButton>
@@ -320,10 +341,24 @@ const ProjectDetailsView = () => {
         onClose={() => setPendingMove(null)}
         onConfirm={() => move(pendingMove)}
         title={pendingMove ? `${ACTIONS[pendingMove].label}?` : ''}
-        message={pendingMove ? `${project.project_code} will move from ${project.status} to ${pendingMove}.` : ''}
-        confirmText='Yes, continue'
+        message={
+          pendingMove ? `${project.project_code} will move from ${project.status} to ${pendingMove}. ${MOVE_WARNING[pendingMove] || ''}` : ''
+        }
+        confirmText={pendingMove === 'Closed' ? 'Yes, close project' : 'Yes, continue'}
         cancelText='Cancel'
         busy={isChanging}
+      />
+
+      <ReasonDialog
+        open={askReopen}
+        onClose={() => setAskReopen(false)}
+        busy={isReopening}
+        title={`Reopen ${project.project_code}?`}
+        message='The project becomes Active again, so tasks, hours and expenses can be added. Say why it is reopened: the reason is kept in the approval history and the project manager is told.'
+        label='Reason'
+        minLength={10}
+        confirmText='Reopen Project'
+        onSubmit={reopen}
       />
 
       <ReasonDialog
@@ -357,6 +392,12 @@ const ProjectDetailsView = () => {
               {project.customer_name ? ` · ${project.customer_name}` : ''}
             </div>
           </div>
+
+          {isClosed && can('projects', 'approve') && (
+            <GhostButton onClick={() => setAskReopen(true)} disabled={isReopening} data-reopen-project>
+              <Icon icon='tabler:lock-open' width={16} /> Reopen Project
+            </GhostButton>
+          )}
 
           {allowedMoves.length > 0 && (
             <div className='flex flex-wrap gap-2'>

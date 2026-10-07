@@ -15,7 +15,8 @@ const App = ({ Component, pageProps }) => (
       <meta name='viewport' content='width=device-width, initial-scale=1' />
     </Head>
     <PmsSettingsProvider>
-      <Toaster position='top-right' />
+      {/* Below the top bar, so a message never covers the bell or the avatar menu. */}
+      <Toaster position='top-right' containerStyle={{ top: 76 }} />
       {Component.noShell ? (
         <Component {...pageProps} />
       ) : (

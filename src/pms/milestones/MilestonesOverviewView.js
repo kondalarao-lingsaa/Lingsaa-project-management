@@ -4,8 +4,7 @@ import { Menu, MenuItem } from '@mui/material'
 import { Edit, Ellipsis, PlusCircle, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ConfirmDialog from 'src/pms/components/ConfirmDialog'
-import { usePmsPermissions } from 'src/pms/adapters/permissions'
-import { getScreen } from 'src/pms/config/pmsModules'
+import { useCan } from 'src/pms/access/useAccess'
 import PmsPage from 'src/pms/components/PmsPage'
 import usePagedRows from 'src/pms/components/usePagedRows'
 import StatCard from 'src/pms/components/StatCard'
@@ -42,8 +41,8 @@ const MilestonesOverviewView = ({ screenId = 'deliverables' }) => {
   const { data: metaResp } = useGetMilestoneMetaQuery()
 
   // Same rules as Project Details > Milestones: needs edit permission; Accepted milestones and Closed projects are locked.
-  const { userPermissions } = usePmsPermissions(getScreen('deliverables')?.permissionName)
-  const canEdit = Boolean(userPermissions?.edit)
+  const can = useCan()
+  const canEdit = can('deliverables', 'edit') || can('deliverables', 'delete')
   const { data: projectsResp } = useGetProjectOptionsQuery()
   const projectOf = id => (projectsResp?.detail || []).find(p => p.id === id)
   const [deleteMilestone, { isLoading: isDeleting }] = useDeleteMilestoneMutation()
@@ -78,7 +77,7 @@ const MilestonesOverviewView = ({ screenId = 'deliverables' }) => {
     <PmsPage
       screenId={screenId}
       actions={
-        canEdit && (
+        can('deliverables', 'add') && (
           <PrimaryButton onClick={() => setChooser(true)}>
             Add Milestone <PlusCircle size={16} />
           </PrimaryButton>
@@ -294,6 +293,7 @@ const MilestonesOverviewView = ({ screenId = 'deliverables' }) => {
       </div>
 
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)} autoFocus={false}>
+        {can('deliverables', 'edit') && (
         <MenuItem
           className={ThemeStyles.actionMenuItem}
           onClick={() => {
@@ -306,6 +306,8 @@ const MilestonesOverviewView = ({ screenId = 'deliverables' }) => {
             Edit
           </div>
         </MenuItem>
+        )}
+        {can('deliverables', 'delete') && (
         <MenuItem
           className={ThemeStyles.actionMenuItem}
           onClick={() => {
@@ -318,6 +320,7 @@ const MilestonesOverviewView = ({ screenId = 'deliverables' }) => {
             Delete
           </div>
         </MenuItem>
+        )}
       </Menu>
     </PmsPage>
   )

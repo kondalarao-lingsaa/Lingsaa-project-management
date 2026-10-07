@@ -124,19 +124,15 @@ const shift = days => {
     await inCard('Send for Review')
     await br.waitFor(`(document.querySelector('section[data-milestone]') || {}).innerText.includes('Accept')`, 'accept button')
     await inCard('Accept')
-    await br.waitFor(`(document.querySelector('section[data-milestone]') || {}).innerText.includes('Create Invoice')`, 'accepted')
-    check('Accepted: card offers "Create Invoice"', (await cardText()).includes('Accepted'))
+    // Settings > Automation: accepting the milestone drafts its invoice straight away (no "Create Invoice" step).
+    await br.waitFor(`(document.querySelector('section[data-milestone]') || {}).innerText.includes('INV-')`, 'accepted', 20000)
+    check('Accepted', (await cardText()).includes('Accepted'))
 
     // ---------- Invoice ----------
-    await inCard('Create Invoice')
-    await br.waitFor(all(has('What to Bill'), has('Acme Retail')), 'invoice drawer')
-    await br.waitFor(`document.querySelector('#milestone_id') && document.querySelector('#milestone_id').value !== ''`, 'milestone prefilled')
-    await br.waitFor(has('₹59,000'), 'preview total')
-    check('Create Invoice: client, milestone and total ₹59,000 (18% GST) pre-filled', true)
-    await clickLast('Create Draft')
-    await br.waitFor(`(document.querySelector('section[data-milestone]') || {}).innerText.includes('INV-')`, 'invoice chip', 20000)
     const invoiceNo = (await cardText()).match(/INV-\d{4}-\d{4}/)[0]
-    check('invoice created as Draft and shown on the milestone', (await cardText()).includes('Draft'))
+    check('the invoice was drafted by itself and shown on the milestone', (await cardText()).includes('Draft'))
+    const drafted = ((await api('GET', `/billing/invoices?project_id=${project.id}&page_size=20`)).detail || []).find(i => i.invoice_no === invoiceNo)
+    check('drafted invoice total ₹59,000 (50,000 + 18% GST)', drafted && drafted.total === 59000, JSON.stringify(drafted))
 
     await br.goto(`${ROOT}/billing/`)
     await br.waitFor(has(invoiceNo), 'billing list')

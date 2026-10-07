@@ -4,7 +4,7 @@ import { Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material
 import toast from 'react-hot-toast'
 import { GhostButton, PrimaryButton } from 'src/pms/components/ui'
 import { PMS_BASE } from 'src/pms/config/pmsModules'
-import { capitalizeFirst, capitalizeWords } from 'src/pms/utils/validation'
+import { TITLE_REGEX, capitalizeFirst, capitalizeWords } from 'src/pms/utils/validation'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
 import { useSaveProjectAsTemplateMutation } from 'src/store/apps/pms/settingsApi'
 
@@ -12,7 +12,8 @@ const nameError = v => {
   const t = (v || '').trim()
   if (!t) return 'Please Enter Template Name'
   if (t.length < 3) return 'Template Name must be at least 3 characters'
-  if (!/[A-Za-z]/.test(t)) return 'Template Name must contain letters'
+  if (!/[A-Za-z]/.test(t) || !TITLE_REGEX.test(t))
+    return 'Template Name must contain letters and only common symbols (. , & ( ) - / : + #)'
 
   return null
 }

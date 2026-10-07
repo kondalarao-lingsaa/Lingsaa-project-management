@@ -20,7 +20,10 @@ const afterMilestone = [
   'Timeline',
   'Roadmap',
   // Project Details setup checklist counts the milestones.
-  'ProjectDetail'
+  'ProjectDetail',
+  // Accepting a milestone can draft its invoice (Settings > Automation).
+  'Invoices',
+  'Notifications'
 ]
 // An invoice change moves what can be billed, the milestone's invoice badge and the budget's income side.
 const afterInvoice = [
@@ -91,7 +94,8 @@ export const billingApi = pmsApi.injectEndpoints({
         method: 'POST',
         body: { is_done: isDone }
       }),
-      invalidatesTags: ['Milestones', 'Dashboard']
+      // The last deliverable done can send the milestone for review by itself (Settings > Automation).
+      invalidatesTags: ['Milestones', 'Dashboard', 'ApprovalInbox', 'Portal', 'Notifications']
     }),
 
     renameDeliverable: builder.mutation({

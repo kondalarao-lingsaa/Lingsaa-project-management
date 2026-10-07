@@ -14,6 +14,8 @@ export const communicationApi = pmsApi.injectEndpoints({
   overrideExisting: true,
   endpoints: builder => ({
     getNotifications: builder.query({
+      // Polled every 30 s by the bell: no "cannot reach the server" message on every poll while the server is down.
+      extraOptions: { quiet: true },
       query: (p = {}) =>
         url('/notifications', { ...page(p), unread_only: p.unreadOnly ? 'true' : undefined, kind: p.kind }),
       providesTags: ['Notifications', 'TaskActivity']

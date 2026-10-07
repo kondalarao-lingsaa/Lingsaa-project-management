@@ -8,6 +8,7 @@ import { AllocationBar, Chip, formatDate, inr, NameAvatar, PrimaryButton } from 
 import { usePmsPermissions } from 'src/pms/adapters/permissions'
 import { getScreen } from 'src/pms/config/pmsModules'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { staffsProject, useMe } from 'src/pms/access/useAccess'
 import { useGetProjectMembersQuery, useRemoveProjectMemberMutation } from 'src/store/apps/pms/teamApi'
 import MemberDrawer from './MemberDrawer'
 import usePagedRows from 'src/pms/components/usePagedRows'
@@ -17,7 +18,8 @@ const ROLE_TONE = { 'Project Manager': 'violet', 'Team Lead': 'blue', Developer:
 // Project Details > Team: who works on the project, their share of time, rate and workload.
 const ProjectTeamTab = ({ project }) => {
   const { userPermissions } = usePmsPermissions(getScreen('resources.team')?.permissionName)
-  const canEdit = Boolean(userPermissions?.edit) && project.status !== 'Closed'
+  const { me } = useMe()
+  const canEdit = Boolean(userPermissions?.edit) && project.status !== 'Closed' && staffsProject(me, project)
 
   const { data, isFetching } = useGetProjectMembersQuery(project.id)
   const [removeMember, { isLoading: isRemoving }] = useRemoveProjectMemberMutation()
@@ -106,7 +108,14 @@ const ProjectTeamTab = ({ project }) => {
                         <NameAvatar name={m.member_name} />
                         <div className='min-w-0'>
                           <div className='font-semibold'>{m.member_name}</div>
-                          <div className='text-xs text-gray-500'>{m.email || (m.user_id ? 'Login user' : 'No email')}</div>
+                          {m.user_id ? (
+                            <div className='text-xs text-gray-500'>{m.email || 'Login user'}</div>
+                          ) : (
+                            // Without a login the person cannot log hours, see the project or approve: Edit and pick them.
+                            <div className='text-xs font-semibold text-amber-600' data-login-link='none' title='Edit and pick the person from the list'>
+                              Not linked to a login
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>

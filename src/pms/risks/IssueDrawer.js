@@ -131,6 +131,10 @@ const IssueDrawer = ({ open, onClose, project, issue }) => {
                         {m.member_name} - {m.role}
                       </option>
                     ))}
+                    {/* An owner removed from the team since: shown so the form says who it is, and can be changed. */}
+                    {membersResp && issue?.owner_member_id && !(membersResp.detail || []).some(m => m.id === issue.owner_member_id) && (
+                      <option value={issue.owner_member_id}>{issue.owner_name || 'Owner'} (left the team)</option>
+                    )}
                   </select>
                   <span className='block text-xs text-gray-500'>The owner gets the fix task when you create one.</span>
                 </div>

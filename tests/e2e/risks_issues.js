@@ -48,7 +48,7 @@ const shift = days => {
     })
   ).data
   for (const status of ['Pending Approval', 'Approved', 'Active']) await api('POST', `/projects/${project.id}/status`, { status })
-  await api('POST', `/projects/${project.id}/members`, { member_name: 'Anita Rao', role: 'Developer', allocation_pct: 20 })
+  await api('POST', `/projects/${project.id}/members`, { member_name: 'Anita Rao', role: 'Developer', allocation_pct: 0 }) // 0%: demo projects may already book all of Anita's time
 
   const br = await launch(path.join(SHOTS, 'chrome-risks'), 1440, 1000)
   const has = t => `document.body.innerText.includes(${JSON.stringify(t)})`
@@ -159,12 +159,12 @@ const shift = days => {
     await clickLast('Submit Change')
     await br.waitFor(all(has(`${project.project_code}-CR1`), `!document.body.innerText.includes('Add the cost to')`), 'change submitted', 20000)
     await br.sleep(700)
-    await rowMenu('-CR1', 'Approve')
-    await br.waitFor(has('Approve change?'), 'approve dialog')
-    await clickLast('Approve')
-    await br.waitFor(has('someone else'), 'own change')
-    check('the requester cannot approve their own change', true)
-    await clickLast('Cancel')
+    // The requester's row menu has no Approve at all (only Withdraw); the backend refuses it too.
+    const ownApprove = await rowMenu('-CR1', 'Approve')
+    const ownWithdraw = await br.evalJs(`[...document.querySelectorAll('[role="menuitem"]')].some(m => m.innerText.trim() === 'Withdraw')`)
+    check('the requester cannot approve their own change (menu offers only Withdraw)', ownApprove === false && ownWithdraw)
+    await br.evalJs(`document.querySelector('.MuiBackdrop-root') && document.querySelector('.MuiBackdrop-root').click(); true`)
+    await br.sleep(300)
 
     await br.evalJs(`localStorage.setItem('access_token', ${JSON.stringify(MANAGER_TOKEN)}); localStorage.setItem('user_id', '2'); localStorage.setItem('username', 'qa.manager'); true`)
     await br.goto(`${ROOT}/risks/changeRequests/`)

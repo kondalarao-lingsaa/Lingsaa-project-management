@@ -192,7 +192,13 @@ const UsersRolesCard = () => {
         onClose={() => setToRemove(null)}
         busy={removing}
         title='Remove this role?'
-        message={toRemove ? `${toRemove.user_name} goes back to being a Member.` : ''}
+        message={
+          !toRemove
+            ? ''
+            : toRemove.role === 'client'
+            ? `${toRemove.user_name}'s client access is switched off (a client never becomes a Member).`
+            : `${toRemove.user_name} goes back to being a Member.`
+        }
         confirmText='Remove Role'
         cancelText='Cancel'
         onConfirm={async () => {

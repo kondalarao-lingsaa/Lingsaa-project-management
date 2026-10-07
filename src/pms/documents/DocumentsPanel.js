@@ -11,6 +11,7 @@ import { projectDetailsPath } from 'src/pms/projects/ProjectsListView'
 import { taskDetailsPath } from 'src/pms/tasks/paths'
 import { capitalizeFirst } from 'src/pms/utils/validation'
 import { ThemeStyles } from 'src/universalThemeColors/themeColors'
+import { useCan } from 'src/pms/access/useAccess'
 import {
   useDeleteDocumentMutation,
   useDownloadDocumentMutation,
@@ -165,13 +166,13 @@ const DetailsDialog = ({ doc, categories, onClose }) => {
   )
 }
 
-const RowMenu = ({ doc, canEdit, onVersion, onHistory, onEdit, onDelete }) => {
+const RowMenu = ({ doc, rights, onVersion, onHistory, onEdit, onDelete }) => {
   const [anchor, setAnchor] = useState(null)
   const items = [
-    canEdit && { label: 'Upload New Version', icon: 'tabler:upload', onClick: onVersion },
+    rights.add && { label: 'Upload New Version', icon: 'tabler:upload', onClick: onVersion },
     { label: `Version History (${doc.version_count})`, icon: 'tabler:history', onClick: onHistory },
-    canEdit && { label: 'Edit Details', icon: 'tabler:pencil', onClick: onEdit },
-    canEdit && { label: 'Delete', icon: 'tabler:trash', onClick: onDelete, danger: true }
+    rights.edit && { label: 'Edit Details', icon: 'tabler:pencil', onClick: onEdit },
+    rights.delete && { label: 'Delete', icon: 'tabler:trash', onClick: onDelete, danger: true }
   ].filter(Boolean)
 
   return (
@@ -217,7 +218,13 @@ const DocumentsPanel = ({ project, taskId, compact = false, canEdit = true, pres
   const { pageRows, pager } = usePagedRows(rows, { resetKey: `${search}|${category}` })
   const sv = data?.stack_values || {}
   const categories = metaResp?.detail?.categories || []
-  const editable = canEdit && (!project || project.status !== 'Closed')
+  const can = useCan()
+  const open = canEdit && (!project || project.status !== 'Closed')
+  const rights = { add: open && can('documents', 'add'), edit: open && can('documents', 'edit'), delete: open && can('documents', 'delete') }
+  const editable = rights.add
+  // The global page (and Task Details) has no project status of its own, so each row checks its project's.
+  const closedRights = { add: false, edit: false, delete: false }
+  const rowRights = d => (d.project_status === 'Closed' ? closedRights : rights)
 
   const doDelete = async () => {
     try {
@@ -360,7 +367,7 @@ const DocumentsPanel = ({ project, taskId, compact = false, canEdit = true, pres
                         </button>
                         <RowMenu
                           doc={d}
-                          canEdit={editable}
+                          rights={rowRights(d)}
                           onVersion={() => setUploading({ replaces: d })}
                           onHistory={() => setHistory(d)}
                           onEdit={() => setEditing(d)}

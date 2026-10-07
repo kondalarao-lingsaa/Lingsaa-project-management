@@ -14,8 +14,13 @@ const refreshTeam = projectId => [
   'MyWeek',
   'ProjectBudget',
   'BudgetOverview',
+  // A billing rate set here changes what the Create Invoice form can bill.
+  'Billable',
   // Project Details setup checklist counts the team.
-  'ProjectDetail'
+  'ProjectDetail',
+  // Sprint capacity comes from the team's allocation; a renamed member's tasks show in the backlog.
+  'Sprints',
+  'Backlog'
 ]
 
 export const teamApi = pmsApi.injectEndpoints({

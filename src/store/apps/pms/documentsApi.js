@@ -7,7 +7,8 @@ const url = (path, params = {}) => {
   return `${PMS_BASE_URL}${path}?${pmsAuthQuery()}${qs ? `&${qs}` : ''}`
 }
 
-const afterChange = ['Documents', 'DocumentVersions', 'Dashboard']
+// Receipts of expenses live here too, and shared files show in the client portal.
+const afterChange = ['Documents', 'DocumentVersions', 'Dashboard', 'Expenses', 'Portal']
 
 export const documentsApi = pmsApi.injectEndpoints({
   overrideExisting: true,

@@ -41,7 +41,7 @@ const plus = d => new Date(Date.now() + d * 864e5).toISOString().slice(0, 10)
   const live = await mk('Portal', 60000)
   await api(pm.token, 'POST', `/projects/${live.id}/status`, { status: 'Pending Approval' })
   await api(pm.token, 'POST', `/projects/${live.id}/status`, { status: 'Active' })
-  await api(pm.token, 'POST', `/projects/${live.id}/members`, { member_name: 'Anita Rao', user_id: 5, role: 'Designer', allocation_pct: 5 })
+  await api(pm.token, 'POST', `/projects/${live.id}/members`, { member_name: 'Anita Rao', user_id: 5, role: 'Designer', allocation_pct: 0 })
   const ms = (await api(pm.token, 'POST', `/projects/${live.id}/milestones`, { name: 'Design Sign-off', amount: 30000, due_date: plus(10) })).data
   await api(pm.token, 'POST', `/projects/${live.id}/milestones/${ms.id}/deliverables`, { name: 'Home page design' })
   const did = (await api(pm.token, 'GET', `/projects/${live.id}/milestones`)).detail[0].deliverables[0].id

@@ -11,10 +11,11 @@ import { useLazyGetTemplateQuery, useSaveTemplateMutation } from 'src/store/apps
 const PRIORITIES = ['Low', 'Medium', 'High', 'Critical']
 const TYPES = ['Task', 'Story', 'Bug', 'Epic']
 const uid = () => Math.random().toString(36).slice(2)
-const blankMilestone = () => ({ key: uid(), name: '', due_offset: '', amount: '' })
+const blankMilestone = () => ({ key: uid(), name: '', description: '', due_offset: '', amount: '' })
 const blankTask = () => ({
   key: uid(),
   title: '',
+  description: '',
   priority: 'Medium',
   task_type: 'Task',
   estimated_hours: '',
@@ -28,10 +29,18 @@ const numOrNull = v => (v === '' || v === null || v === undefined ? null : Numbe
 
 // Server rows use indexes; the form uses row keys so removing a row keeps every link right.
 const toForm = t => {
-  const ms = t.milestones.map(m => ({ key: uid(), name: m.name, due_offset: str(m.due_offset), amount: str(m.amount) }))
+  // Descriptions have no field in the editor, but are carried along so saving the template keeps them.
+  const ms = t.milestones.map(m => ({
+    key: uid(),
+    name: m.name,
+    description: m.description || '',
+    due_offset: str(m.due_offset),
+    amount: str(m.amount)
+  }))
   const ts = t.tasks.map(x => ({
     key: uid(),
     title: x.title,
+    description: x.description || '',
     priority: x.priority,
     task_type: x.task_type === 'Subtask' ? 'Task' : x.task_type,
     estimated_hours: str(x.estimated_hours),
@@ -66,11 +75,13 @@ const toBody = form => {
     duration_days: Number(form.duration_days),
     milestones: form.milestones.map(m => ({
       name: m.name.trim(),
+      description: (m.description || '').trim() || null,
       due_offset: numOrNull(m.due_offset),
       amount: numOrNull(m.amount)
     })),
     tasks: form.tasks.map(t => ({
       title: t.title.trim(),
+      description: (t.description || '').trim() || null,
       priority: t.priority,
       task_type: t.parent ? 'Subtask' : t.task_type,
       estimated_hours: numOrNull(t.estimated_hours),
